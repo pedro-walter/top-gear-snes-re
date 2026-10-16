@@ -45,7 +45,7 @@ isolated `HOME` (`tools/mesen-home`) so your own Mesen settings are untouched; s
 then re-run). On some Linux setups an `LD_PRELOAD` of the system libstdc++ is needed (already in the launcher).
 
 ## Open questions
-What darkens the screen on night tracks, sprite frame/DMA format, object hit thresholds,
+Sprite frame/DMA format, object hit thresholds,
 the role of scenery blocks within a road type. See docs/07.
 
 ## License
