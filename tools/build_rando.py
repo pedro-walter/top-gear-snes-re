@@ -39,4 +39,10 @@ if __name__ == '__main__':
     open(out, 'wb').write(rom)
     with open(out[:-4] + '.lua', 'w') as f:
         f.write('SYM={\n' + ''.join('  %s=0x%06X,\n' % (k, v) for k, v in sorted(a.symbols.items()) if v < 0x1000000) + '}\n')
+    if not ar.harness:
+        # Mesen auto-applies <rom name>.ips: a stale patch next to the ROM silently corrupts it, so refresh it on every build
+        import make_ips
+        orig = bytearray(open(os.environ.get('TOPGEAR_ROM', 'Top Gear (USA).sfc'), 'rb').read())
+        orig.extend(bytes(len(rom) - len(orig)))
+        open(out[:-4] + '.ips', 'wb').write(make_ips.ips(orig, rom))
     print('wrote', out, len(rom), 'bytes;', 'gen end', hex(max(v for k, v in a.symbols.items() if k in ('pit_styles',))))
