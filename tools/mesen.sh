@@ -8,4 +8,4 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 export HOME="$D/tools/mesen-home"
 sed -i 's/"AllowIoOsAccess": false/"AllowIoOsAccess": true/; s/"ScriptTimeout": [0-9]*/"ScriptTimeout": 30/' "$HOME/.config/Mesen2/settings.json"
 cd "$D"
-exec "$D/tools/mesen/Mesen" --testRunner "$D/Top Gear (USA).sfc" "$@"
+exec "$D/tools/mesen/Mesen" --testRunner "${TG_ROM:-$D/Top Gear (USA).sfc}" "$@"
