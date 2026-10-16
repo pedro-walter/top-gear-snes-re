@@ -217,6 +217,134 @@ def fmt_insn(ins, rom, lab):
     return "%-11s %s %s" % (raw, ins.mn, txt)
 
 
+
+STORE_MN = {"STA", "STX", "STY", "STZ", "INC", "DEC", "ASL", "LSR", "ROL", "ROR", "TSB", "TRB"}
+A_WRITERS = {"LDA", "PLA", "TXA", "TYA", "TDC", "TSC", "ADC", "SBC", "AND", "ORA", "EOR", "ASL", "LSR",
+             "ROL", "ROR", "INC", "DEC", "XBA", "MVN", "MVP"}
+DMA_REGS = ["DMAP", "BBAD", "A1TL", "A1TH", "A1B", "DASL", "DASH", "DASB", "A2AL", "A2AH", "NTRL"]
+
+
+class Annot:
+    """Hand-written knowledge: WRAM variable names, hardware registers, routine docs, inline comments."""
+
+    def __init__(self, d):
+        self.ram = {}      # addr -> (size, name, desc)
+        self.hw = {}       # addr -> (name, desc)
+        self.doc = {}      # addr -> [lines]
+        self.sym = {}      # addr -> name
+        self.cmt = {}      # addr -> text
+        self.regions = []  # (lo, hi, kind, text)
+        self.banks = {}    # bank -> text
+        if not d:
+            return
+        import os
+        def rd(n):
+            p = os.path.join(d, n)
+            return open(p).read().split("\n") if os.path.exists(p) else []
+        for ln in rd("ram.txt"):
+            if ln.startswith("#") or not ln.strip():
+                continue
+            p = ln.split(None, 3)
+            self.ram[int(p[0], 16)] = (1 if p[1] == "b" else 2, p[2], p[3] if len(p) > 3 else "")
+        for ln in rd("hwregs.txt"):
+            if ln.startswith("#") or not ln.strip():
+                continue
+            p = ln.split(None, 2)
+            self.hw.setdefault(int(p[0], 16), (p[1], p[2] if len(p) > 2 else ""))
+        cur = None
+        for ln in rd("symbols.txt"):
+            if ln.startswith("@"):
+                p = ln[1:].split(None, 1)
+                cur = int(p[0], 16)
+                self.sym[cur] = p[1].strip() if len(p) > 1 else None
+                self.doc[cur] = []
+            elif ln.startswith(";;") and cur is not None:
+                self.doc[cur].append(ln[2:].strip())
+            elif ln.strip() and not ln.startswith("#"):
+                cur = None
+        for ln in rd("comments.txt"):
+            if ln.startswith("#") or not ln.strip():
+                continue
+            p = ln.split(None, 1)
+            self.cmt[int(p[0], 16)] = p[1].strip() if len(p) > 1 else ""
+        for ln in rd("regions.txt"):
+            if ln.startswith("#") or not ln.strip():
+                continue
+            if ln.startswith("bank "):
+                p = ln.split(None, 2)
+                self.banks[int(p[1], 16)] = p[2]
+                continue
+            p = ln.split(None, 2)
+            lo, hi = p[0].split("-")
+            self.regions.append((int(lo, 16), int(hi, 16), p[1], p[2] if len(p) > 2 else ""))
+        self.regions.sort()
+
+    def ram_name(self, a):
+        """Name for WRAM address a (0..0x1FFF or 0x7Exxxx), with +offset into a table."""
+        a &= 0xFFFF if a >> 16 in (0, 0x7E) else a
+        if a in self.ram:
+            return self.ram[a][1]
+        for back in range(1, 4):
+            e = self.ram.get(a - back)
+            if e and e[0] > back:
+                return "%s+%d" % (e[1], back)
+        return None
+
+    def hw_name(self, a):
+        if a in self.hw:
+            return self.hw[a][0]
+        if 0x4300 <= a <= 0x437F:
+            ch, r = (a >> 4) & 7, a & 0xF
+            if r < len(DMA_REGS):
+                return "%s%d" % (DMA_REGS[r], ch)
+        return None
+
+    def operand_comment(self, ins):
+        """Annotation for the operand of one instruction, or None."""
+        mode, v = ins.mode, ins.operand
+        if mode in ("abs", "absx", "absy") and ins.mn not in ("JSR", "JMP"):
+            if 0x2100 <= v <= 0x437F:
+                n = self.hw_name(v)
+                return n
+            if v < 0x2000:
+                return self.ram_name(v)
+        elif mode in ("long", "longx") and ins.mn not in ("JSL", "JML"):
+            if v >> 16 in (0x7E, 0x7F):
+                n = self.ram_name(v) if v >> 16 == 0x7E else None
+                return n
+        return None
+
+    def has_region(self, a):
+        for lo, hi, k, t in self.regions:
+            if lo <= a <= hi:
+                return (lo, hi, k, t)
+        return None
+
+
+def decode_hw(name, val):
+    """Bit decode of a few important registers when the stored value is known."""
+    if name == "INIDISP":
+        return "%s, brightness %d" % ("forced blank" if val & 0x80 else "display on", val & 15)
+    if name == "NMITIMEN":
+        f = [n for b, n in ((0x80, "NMI"), (0x20, "V-IRQ"), (0x10, "H-IRQ"), (1, "auto-joypad")) if val & b]
+        return "enable: " + (",".join(f) or "none")
+    if name in ("MDMAEN", "HDMAEN"):
+        return "channels " + ("".join(str(i) for i in range(8) if val >> i & 1) or "none")
+    if name == "BGMODE":
+        return "mode %d%s" % (val & 7, ", BG3 priority" if val & 8 else "")
+    if name in ("TM", "TS"):
+        n = [x for b, x in ((1, "BG1"), (2, "BG2"), (4, "BG3"), (8, "BG4"), (16, "OBJ")) if val & b]
+        return "layers " + ",".join(n)
+    if name == "COLDATA":
+        ch = "".join(c for b, c in ((0x20, "R"), (0x40, "G"), (0x80, "B")) if val & b)
+        return "fixed colour %s=%d" % (ch, val & 31)
+    if name == "CGADSUB":
+        return "%s%s, layers %02X" % ("subtract" if val & 0x80 else "add", "/half" if val & 0x40 else "", val & 0x3F)
+    if name.startswith("DMAP"):
+        return "%s, mode %d" % ("B->A (read)" if val & 0x80 else "A->B", val & 7)
+    return None
+
+
 def read_seeds(path):
     out = []
     for ln in open(path):
@@ -230,8 +358,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("rom"); ap.add_argument("out")
     ap.add_argument("--seeds"); ap.add_argument("--names"); ap.add_argument("--wram")
+    ap.add_argument("--annot", help="directory with ram.txt, hwregs.txt, symbols.txt, comments.txt, regions.txt")
     args = ap.parse_args()
     rom = Rom(args.rom, args.wram)
+    an = Annot(args.annot)
     # vectors (LoROM header at 00:FFC0)
     vec = {}
     for name, off in (("COP_N", 0xFFE4), ("BRK_N", 0xFFE6), ("ABORT_N", 0xFFE8), ("NMI_N", 0xFFEA),
@@ -263,6 +393,9 @@ def main():
             p = ln.split("#")[0].split()
             if len(p) >= 2:
                 names[int(p[0], 16)] = p[1]
+    for a, n in an.sym.items():
+        if n:
+            names[a] = n
     for k, v in vec.items():
         names.setdefault(v, k.lower() + "_vec") if v else None
     names.setdefault(0x7E0000, "wram_nmi_stub")
@@ -278,63 +411,152 @@ def main():
         pre = "sub" if "sub" in k else ("loc" if "loc" in k else "jmp")
         return "%s_%06X" % (pre, a)
 
+    # ---- cross references: callee -> callers
+    callers = collections.defaultdict(list)
+    for a, ins in code.items():
+        if ins.mn in ("JSR", "JSL") and ins.target is not None:
+            callers[ins.target].append(a)
+
+    def sub_summary(a):
+        """Approximate extent of a routine and the variables it reads/writes/calls."""
+        rd, wr, calls = collections.OrderedDict(), collections.OrderedDict(), collections.OrderedDict()
+        n = 0
+        while a in code and n < 600:
+            ins = code[a]
+            nm = an.operand_comment(ins)
+            if nm:
+                (wr if ins.mn in STORE_MN else rd)[nm.split("+")[0]] = 1
+            if ins.mn in ("JSR", "JSL") and ins.target is not None:
+                calls[lab(ins.target) or "$%06X" % ins.target] = 1
+            n += 1
+            if ins.mn in ("RTS", "RTL", "RTI") and not (a + ins.len in code and a + ins.len in labels
+                                                         and "loc" in labels[a + ins.len]):
+                break
+            a += ins.len
+        return rd, wr, calls, n
+
+    state = dict(imm=None)
+
+    def inline_comment(ins):
+        """Compose the '; ...' text for one instruction."""
+        parts = []
+        a = ins.addr
+        mn = ins.mn
+        # track A immediate for register writes
+        if mn == "LDA" and ins.mode == "immm":
+            state["imm"] = ins.operand
+        elif mn in A_WRITERS or mn in ("PLP", "REP", "SEP") and False:
+            state["imm"] = None
+        nm = an.operand_comment(ins)
+        if nm:
+            if ins.mode in ("abs", "absx", "absy") and 0x2100 <= ins.operand <= 0x437F:
+                txt = nm
+                base = nm.rstrip("0123456789")
+                if mn == "STA" and state["imm"] is not None:
+                    d = decode_hw(nm if not nm[-1].isdigit() or nm in ("BG1SC", "BG2SC", "BG3SC", "BG4SC")
+                                  else base, state["imm"])
+                    if d:
+                        txt += " <= " + d
+                parts.append(txt)
+                desc = an.hw.get(ins.operand, (None, ""))[1]
+                if desc and mn in ("STA", "STX", "STY", "STZ") and not parts[-1].count("<="):
+                    parts.append(desc)
+            else:
+                e = an.ram.get(ins.operand & 0xFFFF)
+                parts.append(nm + ((" - " + e[2]) if e and e[2] and a not in an.cmt else ""))
+        if ins.target is not None and mn in ("JSR", "JSL", "JMP", "JML"):
+            t = ins.target
+            d = an.doc.get(t)
+            if d:
+                parts.append(d[0])
+        if a in an.cmt:
+            parts.append(an.cmt[a])
+        if mn in ("RTS", "RTL", "RTI"):
+            state["imm"] = None
+        return "; " + " | ".join(parts) if parts else ""
+
+    def emit_range(f, lo, hi, where):
+        a = lo
+        while a < hi:
+            if a in code:
+                ins = code[a]
+                l = lab(a)
+                if a in labels and "sub" in labels[a] or (a in an.doc and an.doc[a]):
+                    # routine header
+                    f.write("\n;" + "-" * 78 + "\n")
+                    f.write("; %s  (%06X)\n" % (l or "sub_%06X" % a, a))
+                    for t in an.doc.get(a, []):
+                        f.write(";   %s\n" % t)
+                    if not an.doc.get(a):
+                        f.write(";   (not yet analysed)\n")
+                    cs = sorted(set(callers.get(a, [])))
+                    if cs:
+                        f.write(";   called from: %s%s\n" % (", ".join("%06X" % c for c in cs[:8]),
+                                                              " ... (%d total)" % len(cs) if len(cs) > 8 else ""))
+                    rd, wr, calls, n = sub_summary(a)
+                    if rd:
+                        f.write(";   reads : %s\n" % ", ".join(list(rd)[:14]))
+                    if wr:
+                        f.write(";   writes: %s\n" % ", ".join(list(wr)[:14]))
+                    if calls:
+                        f.write(";   calls : %s\n" % ", ".join(list(calls)[:12]))
+                    f.write(";" + "-" * 78 + "\n")
+                    state["imm"] = None
+                if l:
+                    f.write("%s:\n" % l)
+                    if "loc" in labels.get(a, ()) and "sub" not in labels.get(a, ()):
+                        state["imm"] = None
+                c = inline_comment(ins)
+                txt = fmt_insn(ins, rom, lab)
+                f.write("  %06X  %-40s %s\n" % (a, txt, c) if c else "  %06X  %s\n" % (a, txt))
+                a += ins.len
+            else:
+                reg = an.has_region(a)
+                if reg and (a == reg[0] or a == lo):
+                    f.write("\n; ---- data %06X-%06X [%s] %s\n" % (reg[0], reg[1], reg[2], reg[3]))
+                step = 16
+                kind = reg[2] if reg else "db"
+                if kind == "dw" or kind == "ptr":
+                    step = 16
+                n = 0
+                lim = (reg[1] + 1) if reg else hi
+                while a + n < min(hi, lim) and (a + n) not in covered and n < step:
+                    if n and (lab(a + n) or (reg and a + n == reg[0])):
+                        break
+                    n += 1
+                l = lab(a)
+                if l:
+                    f.write("%s:\n" % l)
+                if kind in ("dw", "ptr") and n >= 2:
+                    n -= n & 1
+                    ws = ",".join("$%04X" % (rom.rd(a + k) | rom.rd(a + k + 1) << 8) for k in range(0, n, 2))
+                    f.write("  %06X  .dw %s\n" % (a, ws))
+                else:
+                    f.write("  %06X  .db %s\n" % (a, ",".join("$%02X" % rom.rd(a + k) for k in range(n))))
+                a += n
+
     ncode = sum(i.len for i in code.values())
     with open(args.out, "w") as f:
-        f.write("; Top Gear (USA) disassembly - auto generated by tools/disasm.py\n")
+        f.write("; Top Gear (USA) annotated disassembly - generated by tools/disasm.py\n")
+        f.write("; DO NOT COMMIT: contains ROM-derived code/data. Rebuild with `make disasm`.\n")
+        f.write("; Hand-written knowledge lives in disasm/annot/*.txt (symbols, ram, comments, regions) and docs/.\n")
         f.write("; vectors: " + ", ".join("%s=%04X" % (k, v) for k, v in vec.items()) + "\n")
-        f.write("; code bytes: %d / %d (%.1f%%)\n; unresolved indirect jumps: %d\n\n" %
+        f.write("; code bytes: %d / %d (%.1f%%)\n; unresolved indirect jumps: %d\n" %
                 (ncode, rom.size, 100.0 * ncode / rom.size, len(jts)))
+        f.write("; Operand comments assume DBR=0 / DP=0 (true for nearly all game code); bank 05 car code uses\n")
+        f.write("; DP=$0200 in places, so '$19,X' style operands there are car-record offsets.\n")
         nbanks = rom.size // 0x8000
         for b in range(nbanks):
             base = (b << 16) | 0x8000
-            f.write("\n; ===== bank $%02X =====\n" % b)
-            a, end = base, base + 0x8000
-            while a < end:
-                if a in code:
-                    ins = code[a]
-                    l = lab(a)
-                    if l:
-                        f.write("%s:\n" % l)
-                    f.write("  %06X  %s\n" % (a, fmt_insn(ins, rom, lab)))
-                    a += ins.len
-                else:
-                    # data run until next code byte (max 16 per line)
-                    n = 0
-                    while a + n < end and (a + n) not in covered and n < 16:
-                        if n and lab(a + n):
-                            break
-                        n += 1
-                    l = lab(a)
-                    if l:
-                        f.write("%s:\n" % l)
-                    f.write("  %06X  .db %s\n" % (a, ",".join("$%02X" % rom.rd(a + k) for k in range(n))))
-                    a += n
+            f.write("\n\n; " + "=" * 78 + "\n; ===== bank $%02X =====  %s\n; " % (b, an.banks.get(b, "")) + "=" * 78 + "\n")
+            emit_range(f, base, base + 0x8000, "rom")
         if rom.wram:
             for lo, hi, title in ((0x7E0000, 0x7E0010, "WRAM interrupt stubs"),
-                                  (0x7E2000, 0x7E3700, "WRAM-resident engine code (decompressed at boot)")):
-                f.write("\n; ===== %s =====\n" % title)
-                a = lo
-                while a < hi:
-                    if a in code:
-                        ins = code[a]
-                        l = lab(a)
-                        if l:
-                            f.write("%s:\n" % l)
-                        f.write("  %06X  %s\n" % (a, fmt_insn(ins, rom, lab)))
-                        a += ins.len
-                    else:
-                        n = 0
-                        while a + n < hi and (a + n) not in covered and n < 16:
-                            if n and lab(a + n):
-                                break
-                            n += 1
-                        l = lab(a)
-                        if l:
-                            f.write("%s:\n" % l)
-                        f.write("  %06X  .db %s\n" % (a, ",".join("$%02X" % rom.rd(a + k) for k in range(n))))
-                        a += n
+                                  (0x7E2000, 0x7E3700, "WRAM-resident engine code (decompressed from ROM at boot)")):
+                f.write("\n\n; ===== %s =====\n" % title)
+                emit_range(f, lo, hi, "wram")
         if jts:
-            f.write("\n; unresolved indirect jumps:\n")
+            f.write("\n; unresolved indirect jumps (jump tables):\n")
             for a, mn in jts:
                 f.write(";   %06X %s\n" % (a, mn))
     print("code bytes %d/%d (%.1f%%), subs %d, unresolved jumps %d, flag conflicts %d" %

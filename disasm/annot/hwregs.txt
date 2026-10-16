@@ -1,0 +1,105 @@
+2100 INIDISP  screen display: bit7 forced blank, bits0-3 brightness
+2101 OBSEL    object size and name base
+2102 OAMADDL  OAM address low
+2103 OAMADDH  OAM address high / priority rotation
+2104 OAMDATA  OAM data write
+2105 BGMODE   BG mode and tile size
+2106 MOSAIC   mosaic size/enable
+2107 BG1SC    BG1 tilemap address/size
+2108 BG2SC    BG2 tilemap address/size
+2109 BG3SC    BG3 tilemap address/size
+210A BG4SC    BG4 tilemap address/size
+210B BG12NBA  BG1/2 character base
+210C BG34NBA  BG3/4 character base
+210D BG1HOFS  BG1 horizontal scroll (also Mode7 HOFS)
+210E BG1VOFS  BG1 vertical scroll (also Mode7 VOFS)
+210F BG2HOFS  BG2 horizontal scroll
+2110 BG2VOFS  BG2 vertical scroll
+2111 BG3HOFS  BG3 horizontal scroll
+2112 BG3VOFS  BG3 vertical scroll
+2113 BG4HOFS  BG4 horizontal scroll
+2114 BG4VOFS  BG4 vertical scroll
+2115 VMAIN    VRAM address increment mode
+2116 VMADDL   VRAM address low
+2117 VMADDH   VRAM address high
+2118 VMDATAL  VRAM data write low
+2119 VMDATAH  VRAM data write high
+211A M7SEL    Mode 7 settings
+211B M7A      Mode7 matrix A / signed multiplier operand (16 bit)
+211C M7B      Mode7 matrix B / signed multiplier operand (8 bit)
+211D M7C      Mode7 matrix C
+211E M7D      Mode7 matrix D
+211F M7X      Mode7 centre X
+2120 M7Y      Mode7 centre Y
+2121 CGADD    CGRAM address
+2122 CGDATA   CGRAM data write
+2123 W12SEL   window mask BG1/2
+2124 W34SEL   window mask BG3/4
+2125 WOBJSEL  window mask OBJ/colour
+2126 WH0      window 1 left
+2127 WH1      window 1 right
+2128 WH2      window 2 left
+2129 WH3      window 2 right
+212A WBGLOG   window logic BG
+212B WOBJLOG  window logic OBJ/colour
+212C TM       main screen layers
+212D TS       sub screen layers
+212E TMW      main screen window mask
+212F TSW      sub screen window mask
+2130 CGWSEL   colour math control A
+2131 CGADSUB  colour math control B (add/subtract, layers)
+2132 COLDATA  fixed colour (bits 5-7 = B/G/R select, 0-4 = intensity)
+2133 SETINI   screen mode/interlace/overscan
+2134 MPYL     multiply result low (M7A*M7B)
+2135 MPYM     multiply result mid
+2136 MPYH     multiply result high
+2137 SLHV     latch H/V counters
+2138 OAMDATAREAD
+2139 VMDATALREAD
+213A VMDATAHREAD
+213B CGDATAREAD
+213C OPHCT
+213D OPVCT
+213E STAT77
+213F STAT78
+2140 APUIO0   SPC700 port 0
+2141 APUIO1   SPC700 port 1
+2142 APUIO2   SPC700 port 2
+2143 APUIO3   SPC700 port 3
+2180 WMDATA   WRAM data port
+2181 WMADDL   WRAM address low
+2182 WMADDM   WRAM address mid
+2183 WMADDH   WRAM address bank bit
+4016 JOYWR    joypad strobe
+4016 JOYA     joypad 1 serial read
+4017 JOYB     joypad 2 serial read
+4200 NMITIMEN interrupt enable: bit7 NMI, 5 V-IRQ, 4 H-IRQ, bit0 auto-joypad
+4201 WRIO     programmable I/O out
+4202 WRMPYA   unsigned multiplicand
+4203 WRMPYB   unsigned multiplier (starts multiply)
+4204 WRDIVL   dividend low
+4205 WRDIVH   dividend high
+4206 WRDIVB   divisor (starts divide)
+4207 HTIMEL   H-IRQ position low
+4208 HTIMEH   H-IRQ position high
+4209 VTIMEL   V-IRQ position low
+420A VTIMEH   V-IRQ position high
+420B MDMAEN   general DMA enable (bit per channel)
+420C HDMAEN   HDMA enable (bit per channel)
+420D MEMSEL   ROM access speed
+4210 RDNMI    NMI flag / CPU version
+4211 TIMEUP   IRQ flag
+4212 HVBJOY   blank/joypad-ready flags
+4213 RDIO     programmable I/O in
+4214 RDDIVL   quotient low
+4215 RDDIVH   quotient high
+4216 RDMPYL   product / remainder low
+4217 RDMPYH   product / remainder high
+4218 JOY1L    auto-joypad 1 low
+4219 JOY1H    auto-joypad 1 high
+421A JOY2L    auto-joypad 2 low
+421B JOY2H    auto-joypad 2 high
+421C JOY3L
+421D JOY3H
+421E JOY4L
+421F JOY4H

@@ -1,0 +1,28 @@
+# Data regions: "BBAAAA-BBAAAA kind text"  (kind: db, dw, ptr)  and "bank NN text"
+bank 00 main engine: boot, race init/loop, HUD, pit, track loader, menus' shared code, per-track tables
+bank 01 sprite/OAM builder and renderer code
+bank 05 car physics, steering, collisions, computer car (plus compressed graphics)
+bank 07 SPC700 sound driver upload and music data
+bank 0C track data: descriptors, slope/curve/scenery/object streams
+bank 0D menu data: minimap bitmaps (0D:8000, 0D:911F), passwords, track names
+bank 0F menu code: title, options, name entry, location (splash) screen
+0C8402-0C853F dw track descriptors: 10 bytes x 32 tracks (w0 pieces, slope/curve/scenery/object stream pointers)
+0C8541-0C8544 dw difficulty masks for objects (E000/...)
+0C8545-0C8590 ptr scenery template pointers (38)
+0C8591-0C85D2 ptr curve template pointers (33)
+0C85D3-0C8614 ptr slope template pointers (33)
+0C8615-0C8814 dw object patterns (16 words each)
+00DDE4-00DE63 dw bot speed offsets per difficulty (6 bytes/track)
+00DEA4-00DEE3 dw laps per track (32)
+00DEE4-00DF23 dw road styles per track
+00DF24-00DF63 dw pit info per track (FFFF = none)
+00DF64-00DFA3 ptr horizon graphics streams per track
+00DFA4-00DFE3 ptr horizon tilemap per track
+00DFE4-00E023 dw palette offset per track
+00E024-00E063 dw lighting day pointer per track
+00E064-00E0A3 dw lighting night pointer per track
+00E0A4-00E0E3 dw day/night script or sky colour per track
+00E0E4-00E123 dw minimap start point per track
+00E124-00E165 dw minimap path stream offsets per track
+00E166-00E1CF db pit-lane border tables
+0DC513-0DC656 db passwords (3 skill levels x 7 x 8 chars)

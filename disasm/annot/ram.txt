@@ -1,0 +1,83 @@
+# WRAM variables (CPU view, bank 0 / $7E). Format: ADDR size name  description
+# size: b=byte w=word. Sources: docs/02..08, verified in emulator unless marked (?).
+0000 w nmi_stub         JML stub the NMI vector jumps through (retargeted menu/race)
+0004 w irq_stub         JML stub for IRQ
+0014 w joy_p1           DP $14: current joypad word of active player (B=8000 Y=4000 Sel=2000 St=1000 U=800 D=400 L=200 R=100 A=80 X=40 L=20 R=10)
+0040 w pit_mode         DP $40: 0xFFFF while pit scene active
+0066 w light_stream     DP $66: day/night script stream pointer (B494 night / B6B6 day)
+00A8 w pit_scroll       DP $A8: pit scene scroll position
+00E1 b pit_flag         DP $E1
+0100 w light_state      day/night state: 8000 day, C0DF night, in between = fade; low byte>>4 = darkness
+0102 w light_timer      frames until day/night change (FFFF = never)
+0104 w light_ptr_a      from 00:E024/E064 [track] (use undecoded)
+0106 w light_ptr_b      step counter / pointer (use undecoded)
+0108 w brake_light      bit15 = brake light palette
+0112 w map_dot_p1       minimap marker (x | y<<8) player 1
+0114 w map_dot_p2       minimap marker player 2
+0116 w map_dot_lead     minimap marker leading car
+0200 w track_length     track length in position units ((w0&0x3F)*1024); also car-list base (DP=$0200 in car code)
+0204 w slot_p1          car-list slot offset of player 1
+0206 w slot_p2          car-list slot offset of player 2 / the computer car
+0212 w carlist          20 records x 18 bytes (see docs/03)
+044C w ring_buffer      2 KB LZ ring buffer of the decompressor (EA8E/EBB6, FB334)
+1E56 w race_laps        laps in this race (= 00:DEA4[track])
+1E5A w speed_p1         player-1 speed (km/h = speed*24>>10)
+1E5C w speed_p2         player-2 / computer car speed
+1E5E w rpm_p1           RPM = speed*gear_ratio<<1
+1E62 w fuel_p1          fuel, counts DOWN, full = A7FF
+1E64 w fuel_p2          computer car fuel
+1E6C w nitro_p1         low 2 bits = charges, bit15 = active
+1E6E w nitro_p2         nitro state of the computer car
+1E72 w gear_p1          gear index 0..4
+1E7A w rank_p1          rank of player 1, 0-based
+1E7C w rank_p2          rank of player 2
+1E7E w steer_state      steering state, high byte = angle (max 51FF)
+1E86 w pit_state_p1     ~state of the pit sequence (FFFF = start)
+1E88 w pit_state_p2     pit state of the computer car
+1E8A w lateral_p1       lateral position, 0 = road centre
+1E8E w fwd_dist         forward distance this tick = (speed/2)*delta
+1E90 w frame_delta      frames elapsed since last game tick, +1 (1..7)
+1E92 w steer_limit_neg  limit on lateral displacement (negative side)
+1E94 w steer_limit_pos  limit on lateral displacement (positive side)
+1EAE w race_frames      frames since race start (day/night timer reference)
+1EB0 w finish_count     number of cars that finished (>=10 = results)
+1EB4 w status_bits      bit0 engine on (cleared on empty tank), pit flags
+1ED7 w track_pos_p1     player-1 position on the lap (word at 1ED6/1ED7, resets each lap)
+1EE2 w top_speed        top speed for the current gear (+fuel bonus)
+1EE8 w car_offset_p1    car index*16: row offset into per-car tables
+1EEA w car_offset_p2    computer car's table offset
+1EF0 w pit_pos          pit-lane start position (2*(00:DF24[t]&0x7FFF))
+1EF2 w ai_flags         bit0 = computer is heading for the pit
+1EF5 w flags_p1         bit 0x80 crash sound, 0x20 no thrust, 0x10 RPM decay
+1EF6 w flags_p2
+1EFD b fuel_burn_p1     CarStats[car] fuel burn factor
+1EFE b fuel_burn_p2
+1F00 w final_pos_p1     final position after the finish
+1F02 w final_pos_p2
+1F04 w two_player       0 = one-player mode
+1F06 w track_id         track number 0..31 (country = track>>2)
+1F10 w difficulty       0..2 amateur/professional/championship
+1F12 w finish_list      ids of finished cars, in finish order
+1F26 w finish_time      finishing time per car id
+1F4E w ?                (unnamed)
+1F76 w mask_accel       joypad mask: accelerate (X=0040)
+1F78 w mask_brake       joypad mask: brake (Y=4000)
+1F7A w mask_shift_up    0 = automatic transmission
+1F7C w mask_shift_dn
+1F7E w mask_nitro       A = 0080
+1F80 w mask_left        0200
+1F82 w mask_right       0100
+1F8F b car_selected     0 red, 1 white, 2 purple, 3 blue
+1F95 w mask_brake_p2
+1FAC w car_cpu          computer-controlled car index
+1FB0 b units_p1         non-zero = km/h, 0 = mph
+1FB1 b units_p2
+1FF4 w rng_seed         LCG seed (seed = 13*(seed+7))
+1FF6 w attract_flag  attract-mode countdown/demo flag: $8000 = demo race running, counts down from $04B0 on the title screen
+1FFC w rng_track        random-track path uses $1FFC & 0x1F
+4000 w hill_table       $7E4000: slope word per 32 position units
+4C00 w curve_table      $7E4C00: curve word per 32 units
+5800 w scenery_table    $7E5800: scenery word per 32 units
+6400 w object_table     $7E6400: roadside object word per 32 units
+7000 w corridor_table   $7E7000: road corridor left/right bytes per 32 units
+3E00 w map_path         $7E3E00: minimap (x,y) bytes per 256 units

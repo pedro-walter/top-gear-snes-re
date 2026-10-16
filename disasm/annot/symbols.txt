@@ -1,0 +1,313 @@
+# Routine names and documentation.  "@BBAAAA name" then ";; text" lines (first line = one-line summary).
+# Confidence: no mark = verified (emulator and/or docs/), (?) = inferred from reads/writes only.
+# Addresses are LoROM CPU addresses (bank:offset, bank 00..0F here).
+
+# ---------------------------------------------------------------- bank 00: boot / main loop
+@008000 reset_vec
+;; RESET: init CPU, decompress the WRAM engine image (ROM -> $7E2000), upload the SPC700 program
+;; (07:8000), then fall into `main_restart`.  The $7543 check at 0080FD tests a magic value
+;; ($1F91+$1FAE) that survives a soft reset; if it is wrong, lap records and stats ($1F00..$1FFF) are cleared.
+@00812A main_restart
+;; start of every game cycle: clears DP/WRAM $0000-$1EFF, then JSL 0F:806D (menus) happens before this
+;; (from 00:8126/00:886F); sets up PPU registers, the WRAM NMI/IRQ stubs ($00/$04 = JML 00:EC1A / 00:EC5B),
+;; calls load_track, builds the first frames and enters the race loop at jmp_008510.
+@008510 race_loop
+;; main race loop: frame_delta ($1E90) = elapsed frames+1; speeds ramp towards target ($46/$59 chase the cars'
+;; track positions), then HUD, pit, light, map-dots, rank updates; at the finish jumps to 008834 -> back to the menus
+@008834 race_exit
+;; leaves the race: stores positions, disables NMI, then JSL 0F:806D with A=1 (results screens) and jumps back to main_restart
+@008878 pause_check
+;; Select (joypad bit $2000) toggles pause: while paused $1E58=$FFFF and the routine spins until Select is pressed again
+@0088A1 update_rpm
+;; RPM counter: +$80 per frame (max $1000) while accelerate is held, -$20 per frame otherwise (P1 $1E5E, P2 $1E60)
+@008910 update_map_dots
+;; reads the minimap path table $7E3E00[pos>>8] for player 1, player 2 and the leader into $0112/$0114/$0116
+@008966 draw_map_dots_p1
+;; writes the three minimap marker sprites into player 1's OAM buffer (flips for mirrored tracks)
+@008A2C draw_map_dots_p2
+;; same for player 2 / computer car (bottom half of the screen)
+@008B26 pit_crew_oam_init_p1
+;; (?) initialises the pit-crew sprite buffers for player 1 when a pit stop starts
+@008B67 pit_crew_oam_init_p2
+;; (?) same for the computer car
+@008DA8 pit_crew_anim_p1_a
+;; pit-crew animation DMA for player 1 (pit state $FFF7)
+@008EB4 pit_crew_anim_p2_a
+;; same for the computer car
+@008FC0 pit_crew_anim_p1_b
+;; pit-crew animation DMA for player 1 (pit state $FFFD)
+@009046 pit_crew_anim_p2_b
+;; same for the computer car
+@0090CC pit_state_machine
+;; pit stop state machine (state = ~$1E86 for P1, ~$1E88 for the computer car): 0 set up pit scene, 1 wait,
+;; 2 input off, 3 wait for accelerate, 4 refuel (+$7F/frame to $A7FF), 5 drive out, 6 restore, 7 release (docs/04)
+@009381 build_sky_hdma
+;; (?) builds the per-scanline sky/horizon colour HDMA table at ($EB); night variant when $0100 == $C0DF
+@00A175 bots_apply_ramp
+;; start-grid ramp: while a car's timer ($0E,X) > 0, speed += accel ($0C,X) (see docs/03); runs with DP=$0200
+@00A1BD cars_update
+;; per-frame car-list update: progress += speed*delta, laps, finish list/time, bubble-sort swap by progress,
+;; collision with the human cars (A2C4), rank (AA79) -> $1E7A/$1E7C  (docs/03)
+@00A30C bump_p1
+;; a bot hits player 1: LSR $1E5A (speed halved), $1EF5 |= $80 (crash sound)
+@00A372 bump_p2
+;; same for player 2 / computer car ($1E5C, $1EF6)
+@00A558 race_init
+;; race initialisation: copy the 20 start-grid templates from 00:A732, bot speeds = base + 2*rand + diff offset
+;; (00:DDE4), lanes, fuel = $A7FF, ranks (docs/03)
+@00A89A rng_far
+;; RTL wrapper of `rng` (used from bank 05)
+@00A89E rng
+;; LCG on $1FF4: seed = 13*(seed+7); returns (hi ^ lo) byte; A on entry = range (result scaled by A+1) or 0 = full byte
+@00A8E1 build_corridor
+;; builds $7E7000 road corridor (left/right limit bytes per 32 units) from the scenery table + wall limits, shrunk
+;; around roadside objects
+@00AA79 compute_rank
+;; rank of car slot X = 1 + number of cars ahead (lap byte, list order); result in A
+@00AB7A race_end_simulation
+;; after the human cars finish, assigns finish times to the remaining cars
+@00ABFC update_bot_cars
+;; (?) per-frame bot update: lateral bounce inside the corridor, visibility/sprite selection (docs/03)
+@00AEF3 update_visible_cars_p2
+;; (?) car visibility list relative to the second view
+@00B18C static_sky_update
+;; (?) used when no day/night script is active ($0100 bit15 clear)
+@00B33B bots_event_counters
+;; (?) increments $1E76/$1E78 and uses rng_pick (B3F2): rank-change / overtaking counters
+@00B3F2 rng_pick
+;; random pick helper (uses rng)
+@00B631 setup_race_hdma
+;; programs the HDMA channels (road scroll, window, colour gradients) for the race screen
+@00B6D1 irq_vblank_start
+;; IRQ handler #1 of the race frame (selected through $0A, V-IRQ at scanline $E0): forced blank, OAM DMA, then chains $0A to the next handler
+@00B4C4 irq_handler_b
+;; (?) IRQ handler step selected through $0A (set at 00:B48D)
+@00B5E2 irq_handler_c
+;; (?) IRQ handler step selected through $0A (set at 00:B5A6)
+@00B75A vblank_main_work
+;; per-frame work called through the pointer in $08 (JSR at 00:B756), runs inside the IRQ at the start of vblank:
+;; swaps the HDMA/scroll buffers, rebuilds car sprites, then falls through the sections below (day/night at 00:BAB9,
+;; map dots 00:BD61/BE0F, scenery scanner 00:BE61, pit crew DMA 00:BE64..BE70)
+@00BAB9 daynight_frame
+;; per-frame day/night timer: counts $0102 down, runs the fade, selects palettes (docs/06)
+@00BF14 load_track
+;; builds everything for the race of track $1F06: streams (BF44), graphics (C182, C230, C5B2), cars (A558),
+;; corridor (A8E1), HDMA (B631); finally $1E56 = laps = 00:DEA4[track]
+@00BF44 load_track_streams
+;; expands the slope/curve/scenery/object streams of bank 0C into WRAM $7E4000/$4C00/$5800/$6400 and the minimap
+;; path $7E3E00; sets $0200 (length), pit side flag/position ($1EF2 bit0, $1EF0).  DBR=0C during the loop. (docs/05)
+@00C182 load_horizon_graphics
+;; per-track horizon/background graphics: tilemap from 00:DFA4[t] to VRAM $1AE0/$1EE0, tiles (00:DF64[t], compressed) to VRAM $6800
+@00C230 load_road_graphics
+;; (?) per-track road/scenery tile graphics -> VRAM (DMA bank 02) and palette selection
+@00C5B2 load_car_graphics
+;; (?) uploads the chosen player/computer car graphics; sets fuel-burn bytes $1EFD/$1EFE from 00:97DB (C69E..C6B5)
+@00C6BB init_scenery_cache
+;; (?) positions the scenery/object sprite scanner at the start line (calls E20D twice)
+@00C722 load_hud_graphics
+;; (?) HUD digits/gear/rank tiles to VRAM, depending on two-player mode and units
+@00CC9B clear_sprite_state
+;; (?) clears the sprite/object cache variables
+@00CCDB lighting_init
+;; clears palette shadow, then (00:CDB6) reads 00:E0A4[track]: day/night script or fixed sky colour (docs/06)
+@00CE61 draw_hud_speed
+;; HUD: speed (km/h = speed*24>>10, mph = *15), gear, rank, nitro count via the PPU multiplier/divider (docs/03)
+@00D86A pit_sign_dma
+;; (?) DMA of pit-related sprite tiles
+@00D913 hud_text_init
+;; (?) initial HUD strings ("COMP", labels) for 1- or 2-player mode
+@00DA75 update_hud_counters
+;; lap counter, position, fuel gauge and pit arrow updates on the HUD (tables DF16/DF24)
+@00DD9C hud_draw_string_p1
+;; (?) draws a HUD string (index in A) via table 00:DF16 for player 1
+@00DDC0 hud_draw_string_p2
+;; (?) same for player 2
+@00E20D scan_roadside_objects
+;; scans the object table ahead of the camera and builds the sprite cache; DMAs scaled object frames (docs/05)
+@00EA40 decompress_to_vram
+;; decompresses a stream (via lz_init/lz_next) straight into VRAM
+@00EA8E lz_init
+;; initialises the LZ decompressor state ($1E,$20,$22,$23); the compressed stream pointer is in $23/$25
+@00EA9B lz_next_byte
+;; returns the next decompressed byte in A (carry set at end of stream); 2 KB ring buffer at $044C+ (docs/06)
+@00EBB6 apu_boot_handshake
+;; waits for the SPC700 boot code ($BBAA on port 0), sends the first block
+@00EC0E wait_frames
+;; (?) waits for the number of frames given in A (counter $0C driven by the NMI)
+@00EC1A nmi_handler_race
+;; NMI during the race: OAM/CGRAM/VRAM DMA, HDMA enable, frame counters, joypad read
+@00EC5B irq_handler_race
+;; IRQ during the race: splits the screen between player 1 and the computer car
+@00EC7E rti_stub
+;; target of unused vectors
+
+# ---------------------------------------------------------------- bank 01: sprite renderer
+@018000 sprite_renderer
+;; (?) main sprite/object renderer (very long unrolled code, scaled frames)
+
+# ---------------------------------------------------------------- bank 05: car physics
+@05D2E0 car_update_speed_gear
+;; per-tick: gear shift, acceleration through the PPU multiplier, drag, clamp -> $1E5A (docs/02)
+@05E9AF steer_block_p1
+;; player 1: shrinks the lateral corridor [$1A,$1C] around cars within 0x200 units ahead (docs/03)
+@05EB58 steer_block_p2
+;; same for player 2 / computer car
+@05ED3A group_object_collision
+;; collision with group objects (gantry, tunnel): bounce and halve speed (docs/05)
+@05F79F can_finish_race
+;; computer pit decision: returns whether fuel X suffices to finish the race (docs/04)
+@05F7E7 computer_car_update
+;; computer-controlled car: steering, speed, pit logic, rubber band (docs/03, docs/04)
+
+# ---------------------------------------------------------------- bank 07: sound
+@078000 spc_upload
+;; uploads an SPC700 program/music block (A = block number) through the APU ports $2140-$2143
+
+# ---------------------------------------------------------------- bank 0F: menus
+@0F8000 nmi_handler_menu
+;; NMI handler used on the title screen and menus (target of the WRAM NMI stub): OAM/CGRAM DMA, joypad, $1FFC++ (random)
+@0F806D menu_entry
+;; JSL entry of all menus.  A = 0: new game / location screen (jmp_0F815A); A != 0 (race finished, A = $1FF6 value): results (jmp_0F83D7)
+@0F80BD setup_menu_hdma
+;; HDMA channels 3/4 for the menu backdrop gradient
+@0F80F4 default_settings
+;; first boot: blank player names, default controls (0D:C656), default lap records (0D:C696)
+@0F8133 play_music
+;; sends a music/sound command through the SPC700 ports (A = song)
+@0F815A location_screen
+;; the "location / splash" screen flow: player-name panels, stats, minimap, then the main menu (sub_0F8C95/918B)
+@0F820E load_menu_palette
+;; copies a 32-byte palette from 0E:FDC6 into the palette shadow $042C
+@0F821D load_minimap_graphic
+;; decompresses the track's 64x64 2bpp minimap (0D:8000 tracks 0-15, 0D:911F tracks 16-31) and builds its tilemap in VRAM
+@0F82F0 upload_minimap_tiles
+;; copies the deduplicated minimap tiles to VRAM and fills the 8x8 tile map
+@0F836D minimap_tile_dedupe
+;; (?) skips empty 8x8 minimap tiles
+@0F83A1 default_player_name
+;; copies the default name ("PLAYER 1"/"PLAYER 2" at 0F:B4BC/B4C9) when a name is blank
+@0F83D7 results_flow
+;; after a race: shows results/standings, advances to the next track of the country ($1F06), qualification test,
+;; congratulation/failure texts, password display
+@0F8693 draw_result_row
+;; draws one player's place suffix (ST/ND/RD/TH) and name on the results screen
+@0F86E7 build_finish_order
+;; fills $1FF8/$1FFA with the human players' finishing places
+@0F8705 load_results_palette
+@0F871A qualify_check_1p
+;; carry set when the human car finished out of the top places (used for championship qualification)
+@0F8733 advance_track
+;; INC $1F06 (mod 32); after the 4th race of a country resets the points table and tests qualification
+@0F8781 draw_table_rows_a
+@0F87AD draw_table_rows_b
+@0F87D9 pad_name_for_draw
+;; replaces blanks in the names by $3D so they can be drawn
+@0F8802 unpad_names
+;; undoes pad_name_for_draw
+@0F882D draw_race_result_table
+;; race results table: places, car colours, times
+@0F894F draw_points_table
+;; sorts the 20 cars by championship points ($1F4E+id) and draws the standings
+@0F8A09 format_time
+;; converts a time in frames (A) to "M:SS.hh" text in $68..$6E
+@0F8A81 draw_lap_record_laps
+;; LOCATION screen STATISTICS: lap record (from $1FB2[track]) and LAPS (0D:C6D6[track])
+@0F8ADC draw_distance
+;; DISTANCE in miles/km = pieces(0D:C6F6[track]) * laps (kph uses a x15 factor)
+@0F8B4E draw_points_column
+@0F8BB6 byte_to_ascii
+;; A (0..99) -> two ASCII digits in $7F/$80
+@0F8BD6 draw_result_times
+@0F8C16 set_car_palettes
+;; loads the palettes of the selected player car and computer car ($1F8F, $1FAC) from 0F:A51C
+@0F8C95 title_screen
+;; boots to the title: loads graphics, Mode 7 intro with the logo animation, attract-mode countdown ($1FF6 = $04B0 frames)
+@0F8F80 clear_text_buffer
+@0F8F8B title_sprites_a
+@0F8FC3 title_sprites_b
+@0F8FFB title_sprites_c
+@0F904B menu_graphics_load
+;; loads the common menu graphics (fonts, backgrounds) to VRAM
+@0F90D7 load_menu_palette_2
+@0F90E6 attract_start_demo
+;; attract mode: $1F06 = random track ($1FFC & 31), seeds the RNG with $1FFC, then starts a demo race ($1FF6 = $8000)
+@0F911C draw_flag_tiles
+@0F914E draw_country_flag
+;; the country flag/map tiles on the main menu (country = $1F06>>2)
+@0F918B main_menu
+;; MAIN MENU loop: entries (index in $5A): 0 = 1/2 PLAYERS, 1 = SKILL LEVEL, 2 = COUNTRY, 3 = SPEED MPH/KPH, 4 = PLAY GAME.
+;; Up/Down move, Left/Right toggle entries 0 and 3, A/Start enters.  Returns (RTS) to start the race on PLAY GAME.
+@0F929E country_menu
+;; COUNTRY selection (entry 2): Up/Down through the countries unlocked so far ($1F0A[difficulty]); sets $1F06 = country*4
+@0F93A3 draw_country_progress
+@0F93DC password_to_progress
+;; matches the typed PASSWORD against the table 0D:C513 (3 x 7 entries) and sets $1F10/$5A
+@0F9426 password_compare
+@0F943D text_entry
+;; name/password entry grid: cursor $48 (hi = row, lo = column in 8-pixel units), 6 columns of letters A-Z
+;; plus the special cells (space/delete/END); characters go to $68..$6F (max 8, count in $5E)
+@0F95AC text_entry_redraw
+@0F95B6 easter_egg_names
+;; (?) if both player names equal two special 8-character strings (0D:C41B/C423) loads a special screen
+@0F9652 skill_menu
+;; SKILL LEVEL menu: AMATEUR / PROFESSIONAL / CHAMPIONSHIP -> $1F10, then $1F06 = progress of that skill * 4
+@0F96DE player_setup_menu
+;; PLAYER SETUP menu: PLAYER 1 / PLAYER 2 / EXIT; name entry, control method type A-D (0D:C656), gear select, car type
+@0F9AD6 draw_car_stats
+@0F9B3B load_name_into_buffer
+@0F9B56 position_name_cursor
+;; places the text cursor sprite ($0202/$0204) for the character slot $5E
+@0F9B70 draw_enter_name
+@0F9B7B copy_name_to_buffer
+;; copies player $81's name ($1F86 / $1FA3) into $68..$6F
+@0F9BC4 store_entered_name
+@0F9BF9 clear_text_tilemap
+@0F9C31 set_menu_page
+;; (?) selects a menu background page A and redraws it
+@0F9C42 clear_bg_tilemaps
+@0F9C5B clear_bg3_text
+@0F9DB2 fade_in_dma
+@0F9DC5 fade_out_dma
+@0F9DDD queue_oam_dma
+@0F9E1C upload_font
+;; font tiles from 0F:9E2B to VRAM $0000
+@0F9E88 wait_input_short
+@0F9EAC wait_input_long
+@0F9ED3 draw_string_list
+;; draws a list of (position, string) entries with row offset $58
+@0F9F35 draw_page_strings_a
+@0F9F3E draw_string
+;; draws one string: X = pointer (word position/attributes then text, 0-terminated); position -> tilemap offset via FA1D0
+@0F9F88 draw_page_strings_b
+@0F9F93 draw_string_to_buffer
+;; draws a string into the text tilemap buffer at $0C6C/$146C
+@0FA045 draw_selection_bar
+;; draws the highlight bar/cursor of the menu entry ($48 = position, $4A = length)
+@0FA131 draw_page_strings_c
+@0FA1C4 pos_to_offset
+@0FA1D0 pos_to_tilemap_offset
+@0FA1EB clear_palette_shadow
+@0FA1F6 upload_palette
+;; DMA of the 512-byte palette shadow $046C to CGRAM
+@0FA21A upload_palette_nmi
+@0FA23E restore_palette
+@0FA24D wait_vblank
+;; waits for A frames
+@0FA258 mode7_set_matrix
+@0FA2AD mode7_calc
+@0FA360 mul_signed
+@0FA39B mul_helper
+@0FA402 build_title_tilemap
+@0FA462 upload_title_tilemap
+@0FA4D2 upload_title_chars
+@0FA53C ppu_menu_init
+;; menu PPU register setup (BG modes, scroll, window, colour math)
+@0FA644 menu_dma_setup
+@0FA691 clear_oam_buffer
+@0FB2F6 decompress_gfx_to_vram_b
+@0FB306 decompress_gfx_to_vram
+;; A = bank|$8000 flags, X = source, Y = VRAM address: decompresses graphics to VRAM through the LZ routine
+@0FB334 decompress_to_wram
+;; same decoder, output to WRAM $7E2000 (used for the minimap bitmaps)
+@0FB35A lz2_init
+@0FB367 lz2_next_byte
