@@ -7,3 +7,10 @@ out/trace_main.txt:
 	tools/mesen.sh scripts/trace.lua
 out/wram_3300.bin:
 	tools/mesen.sh scripts/dumpram.lua
+
+# ---- randomizer (docs/09, docs/10) ----
+rando: out/rando.sfc
+out/rando.sfc: tools/build_rando.py tools/asm65816.py src/*.asm
+	python3 -I tools/build_rando.py
+rando-test:
+	python3 -I tools/rando_test.py 300

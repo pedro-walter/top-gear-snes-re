@@ -542,6 +542,33 @@ ps_k:
     adc T0                      ; 10*k
     clc
     adc SOB
+    sta T4                      ; first byte of the two records of piece k
+    tax
+    lda.l $0C0000,x             ; bit 6 in b0..b3 = group object (tunnel parts): never copy such pieces
+    and #$0040
+    bne ps_bad
+    lda.l $0C0001,x
+    and #$0040
+    bne ps_bad
+    lda.l $0C0002,x
+    and #$0040
+    bne ps_bad
+    lda.l $0C0003,x
+    and #$0040
+    bne ps_bad
+    lda.l $0C0005,x
+    and #$0040
+    bne ps_bad
+    lda.l $0C0006,x
+    and #$0040
+    bne ps_bad
+    lda.l $0C0007,x
+    and #$0040
+    bne ps_bad
+    lda.l $0C0008,x
+    and #$0040
+    bne ps_bad
+    lda T4
     clc
     adc #4
     tax

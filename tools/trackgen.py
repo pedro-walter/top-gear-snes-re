@@ -122,6 +122,8 @@ def source(env):
     for k in range(n):
         if sc[k] == 20 or any(41 <= recs[2 * k + h][4] <= 48 for h in (0, 1)):
             bad.add(k)
+        if k > 0 and any(recs[2 * k + h][i] & 0x40 for h in (0, 1) for i in range(4)):
+            bad.add(k)                                   # group objects (tunnel parts) must not be cut out of their context
     allowed = [k for k in range(1, n - 1) if k not in bad and k + 1 not in bad - {k}]
     allowed = [k for k in range(1, n - 1) if k not in bad]
     return sc, recs, allowed, n
