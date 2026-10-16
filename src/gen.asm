@@ -54,6 +54,7 @@ MASKD   = $F86C
 DD      = $F870         ; 4 words D[0..3]
 T6      = $F878
 LIM     = $F87A
+ROADW   = $F87C         ; replacement bits for 00:DEE4[env] (pit road style, bits 9-11 and 15), used by hook_style
 SLOPE   = $F000         ; 48 words
 CURVE   = $F080         ; 48 words
 SCEN    = $F100         ; 48 words
@@ -181,7 +182,9 @@ slope_walk:
     lda #1
     sta POS
     lda LEN
-    sta END
+    sec
+    sbc #2
+    sta END                     ; the 2 pieces before the line stay flat
     lda HILL
     asl a
     clc
@@ -304,6 +307,8 @@ curve_walk:
     lda #1
     sta POS
     lda LEN
+    sec
+    sbc #2
     sta END
     lda CURVY
     clc
@@ -775,7 +780,29 @@ c10:
     cmp #9
     beq c10_z
     cmp #13
-    bne c10_s
+    beq c10_z
+    phx
+    pha
+    lda ENV
+    asl a
+    asl a
+    tax
+    pla
+    sep #$20
+    cmp.l dropt,x
+    beq c10_zx
+    cmp.l dropt+1,x
+    beq c10_zx
+    cmp.l dropt+2,x
+    beq c10_zx
+    cmp.l dropt+3,x
+    beq c10_zx
+    rep #$20
+    plx
+    bra c10_s
+c10_zx:
+    rep #$20
+    plx
 c10_z:
     lda #0
 c10_s:
@@ -789,6 +816,35 @@ c10_s:
 
 ; ---------------------------------------------------------------------------------------------------------
 ; pit
+write_flag:                     ; A = template byte, Y = destination of a piece's 2 records (advanced by 20): sign type 13 in b0 or b1 (T5)
+    sta T0
+    lda #2
+    sta CNT2
+wf_l:
+    lda #0
+    sta $0000,y
+    sta $0002,y
+    sta $0004,y
+    sta $0006,y
+    lda T0
+    sta $0008,y
+    lda T5
+    bne wf_b1
+    lda #13
+    sta $0000,y
+    bra wf_d
+wf_b1:
+    lda #13
+    sta $0002,y
+wf_d:
+    tya
+    clc
+    adc #10
+    tay
+    dec CNT2
+    bne wf_l
+    rts
+
 pit_setup:
     lda LEN
     sec
@@ -799,23 +855,43 @@ pit_setup:
     sta PP
     lda #3
     jsr rnd
-    sta T0
     asl a
-    clc
-    adc T0
-    tax                         ; style*3
+    asl a
+    asl a
+    tax                         ; style*8: template, side, group, flag far, flag near, flag slot, road style, mirror
     lda PP
     asl a
     tay
     lda.l pit_styles,x
     and #$00FF
     sta SCEN,y
-    lda.l pit_styles+2,x
-    and #$00FF
-    sta T2                      ; group
     lda.l pit_styles+1,x
     and #$00FF
     sta T1                      ; side
+    lda.l pit_styles+2,x
+    and #$00FF
+    sta T2                      ; group
+    lda.l pit_styles+3,x
+    and #$00FF
+    sta T3                      ; flag template, 2 pieces before the pit
+    lda.l pit_styles+4,x
+    and #$00FF
+    sta T4                      ; flag template, piece before the pit
+    lda.l pit_styles+5,x
+    and #$00FF
+    sta T5                      ; 0: sign type in b0, 1: in b1
+    lda.l pit_styles+6,x
+    and #$00FF
+    xba
+    asl a                       ; road style << 9
+    sta ROADW
+    lda.l pit_styles+7,x
+    and #$00FF
+    beq pm_0
+    lda ROADW
+    ora #$8000
+    sta ROADW
+pm_0:
     lda PP
     jsr rec_dest
     tay
@@ -838,36 +914,29 @@ pit_setup:
     lda T2
     inc a
     sta $0012,y
-    ; pit flags (object type 13) on the two pieces before the pit: 4 records, template $18 (right, lateral 124) / $1A (left pit)
-    lda T1
-    beq pf_r
-    lda #$1A
-    bra pf_s
-pf_r:
-    lda #$18
-pf_s:
-    sta T4
+    ; pit flags (object type 13) on the two pieces before the pit
     lda PP
     dec a
     dec a
     jsr rec_dest
     tay
-    ldx #4
-pf_l:
-    lda #0
-    sta $0000,y
-    sta $0004,y
-    sta $0006,y
-    lda #13
-    sta $0002,y
+    lda T3
+    jsr write_flag
     lda T4
-    sta $0008,y
-    tya
-    clc
-    adc #10
+    jsr write_flag
+    ; the last piece before the start line stays empty (the start gantry needs it)
+    lda LEN
+    dec a
+    jsr rec_dest
     tay
+    ldx #10
+    lda #0
+zl_l:
+    sta $0000,y
+    iny
+    iny
     dex
-    bne pf_l
+    bne zl_l
     ; pit word = side<<15 | (PP*512 - 256)
     lda PP
     xba
@@ -1098,7 +1167,7 @@ xo_st:
     inc PIDX
     jmp xo_r
 
-add_chevrons:                   ; turn signs: 5 chevrons every 4 slots ahead of each curve onset (see tools/trackgen.py)
+add_chevrons:                   ; turn signs: one chevron every 4 slots from 20 slots before a curve onset to the end of the curve
     lda LEN
     asl a
     asl a
@@ -1146,25 +1215,54 @@ ac_neg:
     lda #$117C                  ; type 8 ('>'), left side
 ac_w:
     sta T3
-    lda #5
-    sta T4
+    lda T0
+    sta CNT                     ; e = end of the curve
+ac_e:
+    lda CNT
+    inc a
+    cmp LIM
+    bcs ac_ed
+    asl a
+    tax
+    lda.l $7E4C00,x
+    sta T6
+    bpl ac_ep
+    eor #$FFFF
+    inc a
+ac_ep:
+    cmp #8
+    bcc ac_ed
+    lda T6
+    eor T1
+    bmi ac_ed
+    inc CNT
+    bra ac_e
+ac_ed:
     lda T0
     sec
-    sbc #4
-    sta T5                      ; slot j = i-4k
+    sbc #20
+    sta T5                      ; slot j
 ac_kl:
+    lda CNT
+    cmp T5
+    bcc ac_fin                  ; e < j
     lda T5
     lsr a
     lsr a
     lsr a
     lsr a
     lsr a                       ; piece of slot j
+    sta T6
     sec
     sbc PP
     clc
     adc #2
     cmp #3
     bcc ac_skip                 ; pieces PP-2..PP keep their own objects (pit flags, pit lane)
+    lda T6
+    inc a
+    cmp LEN
+    beq ac_skip                 ; the last piece stays empty
     lda T5
     asl a
     tax
@@ -1177,11 +1275,15 @@ ac_kl:
     sta.l $7E6400,x
 ac_skip:
     lda T5
-    sec
-    sbc #4
+    clc
+    adc #4
     sta T5
-    dec T4
-    bne ac_kl
+    bra ac_kl
+ac_fin:
+    lda CNT
+    inc a
+    sta T0
+    jmp ac_i
 ac_next:
     inc T0
     jmp ac_i
@@ -1313,4 +1415,5 @@ slope_levels:   .db 1,4,3, 5,7,6, 15,17,16, 18,20,19, 21,23,22, 9,12,11, 24,26,2
 slope_bumps:    .db 2,14,13,10
 curve_levels:   .db 2,4,3, 6,8,7, 10,12,11
 curve_bumps:    .db 1,17,18,19,20, 5,21,22,23,24, 9,25,26,27,28, 13,29,30,31,32
-pit_styles:     .db 20,0,41, 20,1,47, 20,1,45
+dropt:          .db 28,38,0,0, 15,0,0,0, 11,12,42,0, 11,41,0,0, 14,0,0,0, 24,0,0,0, 15,28,0,0, 24,0,0,0, 55,0,0,0, 54,55,15,0, 43,0,0,0, 0,0,0,0, 27,0,0,0, 10,0,0,0, 31,0,0,0, 11,12,26,0, 27,0,0,0, 31,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 27,7,0,0, 0,0,0,0, 0,0,0,0, 27,0,0,0, 24,0,0,0, 0,0,0,0, 25,0,0,0, 14,0,0,0, 30,0,0,0, 15,29,0,0, 15,14,0,0
+pit_styles:     .db 20,0,41,24,24,0,1,0, 20,1,45,26,26,0,4,0, 20,1,47,24,26,1,5,1

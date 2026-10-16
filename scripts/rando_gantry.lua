@@ -13,5 +13,14 @@ R.run(3200,function(f)
     local C=tonumber(os.getenv("CUR") or 0) local S=tonumber(os.getenv("SLO") or 0)
     for i=(L-3)*32,L*32+63 do if C~=0 then w2(0x4C00+2*i,C) end if S~=0 then w2(0x4000+2*i,S) end end
   end
+  if f==3030 and os.getenv("ZALL") then
+    local L=rw(0x200)//32
+    for i=0,L*32+63 do local w=emu.read(0x6400+2*i,wr)|(emu.read(0x6401+2*i,wr)<<8) if w<0x8000 then w2(0x6400+2*i,0) end end
+  end
+  if f==3030 and os.getenv("ZSLOPE") then
+    local L=rw(0x200)//32
+    for i=0,L*32+63 do w2(0x4000+2*i,0) w2(0x4C00+2*i,0) end
+  end
+  if f>3000 and not SHOT then local L=rw(0x200) local pos=rw(0x1ED7) if L>0 and pos>=L-450 and pos<L then SHOT=true local fh=io.open(string.format("%s/out/%s_pos.png",os.getenv("TG_ROOT"),TAG),"wb") fh:write(emu.takeScreenshot()) fh:close() end end
   if f==3100 or f==3140 then local fh=io.open(string.format(os.getenv("TG_ROOT").."/out/%s_%d.png",TAG,f),"wb") fh:write(emu.takeScreenshot()) fh:close() end
 end)

@@ -42,7 +42,7 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   positive curve, type 8 (`>`) on the left before a negative one - and pit flags (type 13, template `$18`/`$1A`) on the two pieces
   before the pit like the original tracks do. Python reference and 65816 code are identical (`add_chevrons`).
 * **No minimap**: the decompressed minimap bitmap is blanked (`0F:8232`), the three HUD marker sprites are never drawn
-  (`00:8966`, `00:8A2C` return immediately), the lap-record line is moved off screen.
+  (`00:8966`, `00:8A2C` stay alive because they also derive the pit-scene scroll `$A6`; only their dot positions are parked off screen), the lap-record line is moved off screen.
 * Smoke test (`tools/rando_smoke.sh seed...`): 40 random seeds, ~5000 frames each with an autopilot, no stalls
   (race_frames within 6% of real time; the longer tracks are slightly slower). `scripts/rando_pit.lua`: the computer car
   pits on a generated track (state FFFF..0000, fuel refilled to A7FF).
@@ -64,3 +64,14 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   the IPS on every build. Headless `--testRunner` ignores it, so the bug only showed in the GUI.
 * 2-player mode, skill levels and the options use the original code (not individually re-tested).
 * The unused lap-record table `$1FB2..$1FF1` is used as string scratch for the menu hooks.
+
+## Review round 2 (2026-10-16)
+* **Pit styles** are copies of the original combinations (template, side bit, group 41/45 = pit left, 47 = pit right, flag templates and slot,
+  road style of type 3, mirror). The pit word's bit 15 is not left/right. `hook_style` (`00:C270`) overrides the per-environment road-style word
+  `00:DEE4` (bits 9-11, bit 15) so the pit lane is a proper road in environments whose own type-3 style is something else.
+* Flags: `13` in b0/b1 of pieces pp-2 and pp-1 on the pit's side; chevrons every 4 slots from 20 slots before a curve to its end.
+  The last pieces before the line stay flat/straight and empty.
+* **Start gantry**: the scanner `00:E20D` keeps at most 8 distinct graphic ids; extra object types from the pit/chevron pieces make the
+  gantry (group `$8002`) disappear in some environments. `tools/gantry_search.py` finds per environment object types to drop from the copied
+  source (table `DROP` in trackgen.py / `dropt` in gen.asm). All 32 environments show the gantry (`out/ge_sheet.png`).
+* Seed roll mixes H/V counters and the old seed through 4 rounds of the RNG so every digit changes.

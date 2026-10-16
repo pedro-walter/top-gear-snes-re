@@ -44,8 +44,43 @@ SL_BUMPS = [2, 14, 13, 10]               # one-piece bumps 50, 300, 750(13), 750
 CU_LEVELS = [(2, 4, 3), (6, 8, 7), (10, 12, 11)]
 CU_BUMPS = [[1, 17, 18, 19, 20], [5, 21, 22, 23, 24], [9, 25, 26, 27, 28], [13, 29, 30, 31, 32]]
 # pit styles observed in the original ROM: (scenery template, side bit, object group of 1st half)
+DROP = [[28, 38, 0, 0],
+        [15, 0, 0, 0],
+        [11, 12, 42, 0],
+        [11, 41, 0, 0],
+        [14, 0, 0, 0],
+        [24, 0, 0, 0],
+        [15, 28, 0, 0],
+        [24, 0, 0, 0],
+        [55, 0, 0, 0],
+        [54, 55, 15, 0],
+        [43, 0, 0, 0],
+        [0, 0, 0, 0],
+        [27, 0, 0, 0],
+        [10, 0, 0, 0],
+        [31, 0, 0, 0],
+        [11, 12, 26, 0],
+        [27, 0, 0, 0],
+        [31, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [27, 7, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [27, 0, 0, 0],
+        [24, 0, 0, 0],
+        [0, 0, 0, 0],
+        [25, 0, 0, 0],
+        [14, 0, 0, 0],
+        [30, 0, 0, 0],
+        [15, 29, 0, 0],
+        [15, 14, 0, 0]]
 SIGN_TYPES = (8, 9, 13)                  # right chevron, left chevron, pit flag
-PIT_STYLES = [(20, 0, 41), (20, 1, 47), (20, 1, 45)]
+# (scenery template, pit word side bit, object group of the 1st half, flag template far/near, flag record slot (0 = b0, 1 = b1),
+#  road style of type 3, mirror bit of 00:DEE4).  Exactly the combinations of the original tracks: the pit lane is on the left
+#  (groups 41, 45) or on the right (group 47) and the road style (00:DEE4 bits 9-11) of the environment is overridden to match.
+PIT_STYLES = [(20, 0, 41, 24, 24, 0, 1, 0), (20, 1, 45, 26, 26, 0, 4, 0), (20, 1, 47, 24, 26, 1, 5, 1)]
 
 def neg(i): return (256 - i) & 0xFF if i else 0
 
@@ -118,7 +153,7 @@ def source(env):
     recs = [[B(0xC, d['objs'] + 5 * r + i) for i in range(5)] for r in range(2 * n)]
     for rc in recs:                                      # turn signs (8, 9) and pit signs (13) are generated, never copied
         for i in range(4):
-            if rc[i] in SIGN_TYPES: rc[i] = 0
+            if rc[i] in SIGN_TYPES or (rc[i] and rc[i] in DROP[env]): rc[i] = 0
     pw = W(0, 0xDF24 + 2 * env)
     bad = set()
     if pw != 0xFFFF:
@@ -141,8 +176,8 @@ def generate(seed):
     hill = r.rnd(4)
     curvy = r.rnd(3)
     P = L + 2                                            # pieces 0..L-1, L = wrap copy of 0, L+1 = copy of 1 (scanner look-ahead)
-    slope = slope_walk(r, L + 1, hill); slope.append(slope[1])
-    curve = curve_walk(r, L + 1, curvy); curve.append(curve[1])
+    slope = slope_walk(r, L - 1, hill) + [0, 0]; slope.append(slope[1])   # the 2 pieces before the line stay flat and straight
+    curve = curve_walk(r, L - 1, curvy) + [0, 0]; curve.append(curve[1])
     ssc, srecs, allowed, sn = source(env)
     scen = [0] * P
     recs = [None] * (2 * P)
@@ -161,14 +196,18 @@ def generate(seed):
     scen[L + 1] = scen[1]
     recs[2 * (L + 1)] = list(recs[2]); recs[2 * (L + 1) + 1] = list(recs[3])
     pp = 4 + r.rnd(L - 8)                                # pit piece 4..L-5
-    st, side, grp = PIT_STYLES[r.rnd(len(PIT_STYLES))]
+    ps = PIT_STYLES[r.rnd(len(PIT_STYLES))]
+    st, side, grp, tfar, tnear, fpos, rstyle, mirror = ps
     scen[pp] = st
     recs[2 * pp] = [21, 58, 0, 0, grp]; recs[2 * pp + 1] = [21, 58, 0, 0, grp + 1]
-    for q in (pp - 2, pp - 1):                           # pit flags on the two pieces before the pit (like the original tracks)
-        recs[2 * q] = [0, 13, 0, 0, 0x1A if side else 0x18]; recs[2 * q + 1] = list(recs[2 * q])
+    for q, T in ((pp - 2, tfar), (pp - 1, tnear)):       # pit flags on the two pieces before the pit (like the original tracks)
+        rc = [0, 0, 0, 0, T]; rc[fpos] = 13
+        recs[2 * q] = list(rc); recs[2 * q + 1] = list(rc)
+    recs[2 * (L - 1)] = [0] * 5; recs[2 * (L - 1) + 1] = [0] * 5   # the last piece before the line stays empty (the start gantry needs it)
     pit = (side << 15) | ((pp * 1024 - 512) // 2)
+    roadw = (rstyle << 9) | (mirror << 15)               # replaces bits 9-11 and 15 of 00:DEE4[env]
     return dict(seed=seed, env=env, L=L, P=P, laps=laps, hill=hill, curvy=curvy, slope=slope, curve=curve,
-                scen=scen, recs=recs, pit=pit, pitpiece=pp, pitstyle=(st, side, grp))
+                scen=scen, recs=recs, pit=pit, pitpiece=pp, pitstyle=(st, side, grp), roadw=roadw)
 
 # ---------------------------------------------------------------- expansion (same as 00:BF44) ------------------
 def expand_stream(tab, bytes_):
@@ -208,19 +247,27 @@ def expand_objs(recs, diff):
     return words
 
 def add_chevrons(t, curve, objs):
-    """Turn signs: 5 chevrons (every 4 slots, the last one 4 slots before the curve) ahead of every curve onset.
-    Type 9 ('<', right side of the road) before a positive curve, type 8 ('>', left side) before a negative one."""
+    """Turn signs along every curve: one chevron every 4 slots from 20 slots ahead of the curve onset to the end of the curve.
+    Type 9 ('<', right side of the road) for a positive curve, type 8 ('>', left side) for a negative one."""
     L, pp = t['L'], t['pitpiece']
-    for i in range(24, L * 32):
+    i = 24
+    while i < L * 32:
         a, b = s16(curve[i - 1]), s16(curve[i])
         if abs(b) >= 8 and (abs(a) < 8 or (a < 0) != (b < 0)):
             typ, side = (9, 0) if b > 0 else (8, 1)
-            for k in range(1, 6):
-                j = i - 4 * k
-                if pp - 2 <= j // 32 <= pp: continue
+            e = i
+            while e + 1 < L * 32 and abs(s16(curve[e + 1])) >= 8 and (s16(curve[e + 1]) < 0) == (b < 0):
+                e += 1
+            j = i - 20
+            while j <= e:
+                pc = j // 32
                 w = objs[j]
-                if w & 0x8000 or (w & 0xFE00) == 0x7400: continue
-                objs[j] = (typ << 9) | (side << 8) | 0x7C
+                if not (pp - 2 <= pc <= pp or pc == L - 1 or w & 0x8000 or (w & 0xFE00) == 0x7400):
+                    objs[j] = (typ << 9) | (side << 8) | 0x7C
+                j += 4
+            i = e + 1
+        else:
+            i += 1
     for i in range(64):                                  # pieces L, L+1 are copies of 0, 1
         objs[L * 32 + i] = objs[i]
 

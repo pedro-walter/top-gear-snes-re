@@ -13,6 +13,11 @@
 .org $00BF38
     jml hook_laps               ; was: LDA $1F06 / ASL / TAX / LDA $DEA4,X / STA $1E56 / RTS
 
+; ---- 00:C270  load_road_graphics: the pit lane's road style (type 3) and mirror bit come from the generator --------
+.org $00C270
+    jml hook_style              ; was: LDA $DEE4,X / STA $1A   (5 bytes)
+    nop
+
 ; ---- 00:C162  end of load_track_streams: pit position / side ------------------------------------------
 .org $00C162
     jml hook_pit
@@ -29,6 +34,13 @@ hook_streams:                   ; stack holds the caller's DBR (PHB at BF46), re
     asl a
     sta.l $000200
     jml $00C0F1
+
+hook_style:
+    lda.l $00DEE4,x
+    and #$71FF                  ; clear the type-3 style (bits 9-11) and the mirror bit (15)
+    ora.l $7FF87C               ; ROADW
+    sta $1A
+    jml $00C275                 ; BPL (N from the ORA)
 
 hook_laps:
     rep #$30
@@ -79,8 +91,8 @@ seed_init:                      ; first use after power-on: default seed, random
 si_ok:
     rts
 
-roll_seed:                      ; new random seed from the H/V counters (the player's reaction time) and the game's RNG words
-    sep #$20
+roll_seed:                      ; new random seed: entropy (H/V counters = reaction time, the game's RNG words) mixed into the old seed,
+    sep #$20                    ; then scrambled by LFSR bursts and additions so that every digit changes
     lda.l $002137
     lda.l $00213C
     xba
@@ -89,7 +101,8 @@ roll_seed:                      ; new random seed from the H/V counters (the pla
     eor.l $001FF4
     clc
     adc.l $001FFC
-    sta.l $7FF800
+    eor.l $7FF800
+    sta.l $7FF810
     lda.l $001FF4
     asl a
     asl a
@@ -97,7 +110,41 @@ roll_seed:                      ; new random seed from the H/V counters (the pla
     eor.l $001FF8
     clc
     adc.l $001FFA
-    sta.l $7FF802
+    eor.l $7FF802
+    sta.l $7FF812
+    phb
+    sep #$20
+    lda #$7F
+    pha
+    plb
+    rep #$30
+    lda RS
+    ora RSH
+    bne rl_nz
+    lda #$A5C3
+    sta RS
+rl_nz:
+    ldx #4
+rl_r:
+    ldy #13
+rl_s:
+    jsr rng_step
+    dey
+    bne rl_s
+    lda RS
+    clc
+    adc RSH
+    sta RS
+    lda RSH
+    eor RS
+    sta RSH
+    dex
+    bne rl_r
+    lda RS
+    sta SEED
+    lda RSH
+    sta SEED+2
+    plb
     rts
 
 hook_play:
