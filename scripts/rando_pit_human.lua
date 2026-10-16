@@ -28,7 +28,7 @@ end
 local SH0=tonumber(os.getenv('SH0') or 0) local SH1=tonumber(os.getenv('SH1') or 0)
 R.run(MAXF,function(f)
   if f>=SH0 and f<=SH1 and f%20==0 then local fh=io.open(os.getenv('TG_ROOT')..'/out/pit_'..string.format('%X',SEED)..'_'..f..'.png','wb') fh:write(emu.takeScreenshot()) fh:close() end
-  if f>=1000 and f<1500 then w2(0x1F800,SEED&0xFFFF) w2(0x1F802,(SEED>>16)&0xFFFF) w2(0x1F806,0xA55A) end
+  if os.getenv("TRACK") then if f>=2000 and f<2400 then emu.write(0x1F06,tonumber(os.getenv("TRACK")),mt) end elseif f>=1000 and f<1500 then w2(0x1F800,SEED&0xFFFF) w2(0x1F802,(SEED>>16)&0xFFFF) w2(0x1F806,0xA55A) end
   if f>3000 and (f%200==0 or (f>5700 and f<6100 and f%25==0)) then local slot=rw(0x204) print(string.format('f=%d prog=%d p1ed7=%d pit=%d lat=%d speed=%d st=%04X',f,rw(0x200+slot+7),rw(0x1ED7),rw(0x1EF0),sw(rw(0x1E8A)),rw(0x1E5A),rw(0x1E86))) end
   if f>3000 then
     local st=rw(0x1E86)

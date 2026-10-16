@@ -227,12 +227,19 @@ t_seedmenu: jml seed_menu       ; target of the patched "JMP country_menu"
     nop
 
 ; ---- race HUD: minimap marker sprites off ----------------------------------------------------------------------
-.org $008966
-    rep #$30
-    rts
-.org $008A2C
-    rep #$30
-    rts
+; (the routines stay alive: draw_map_dots_p1 also derives the pit scene's BG scroll $A6 - only the dot positions are parked)
+.org $0089BE
+    lda #$F0F0                  ; was LDA $0112
+.org $0089CC
+    lda #$F0F0                  ; was LDA $0116
+.org $0089DA
+    lda #$F0F0                  ; was LDA $0114
+.org $008A84
+    lda #$8080                    ; was LDA $0114 (the p2 routine adds $7000)
+.org $008A96
+    lda #$8080                    ; was LDA $0116
+.org $008AA8
+    lda #$8080                    ; was LDA $0112
 
 ; ===========================================================================================================
 ; bank $10 menu code

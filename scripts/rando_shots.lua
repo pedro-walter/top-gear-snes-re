@@ -12,9 +12,19 @@ R.steer=function(f)
   if lat>1200 then t.left=true elseif lat<-1200 then t.right=true end
   return t
 end
+local ZT={} for t in (os.getenv("ZERO") or ""):gmatch("%d+") do ZT[tonumber(t)]=true end
 local done={}
 R.run(3150+#POS*0+ (POS[#POS] or 1000)//6+600,function(f)
-  if f>=1000 and f<1500 then w2(0x1F800,SEED&0xFFFF) w2(0x1F802,(SEED>>16)&0xFFFF) w2(0x1F804,1) w2(0x1F806,0xA55A) end
+  if f>=1000 and f<1500 then emu.write(0x1F04,0,wr) w2(0x1F800,SEED&0xFFFF) w2(0x1F802,(SEED>>16)&0xFFFF) w2(0x1F804,1) w2(0x1F806,0xA55A) end
+  if f==3150 and next(ZT) then
+    for i=0,rw(0x200)//32*32+63 do local w=rw(0x6400+2*i) if w<0x8000 and ZT[(w>>9)&0x7F] then w2(0x6400+2*i,0) end end
+  end
+  if os.getenv("FRM") and f>=3040 and f<3400 and f%20==0 then
+    local fh=io.open(string.format(os.getenv("TG_ROOT").."/out/%s_f%d.png",TAG,f),"wb") fh:write(emu.takeScreenshot()) fh:close() end
+  if f==3150 and os.getenv("FLAT") then
+    local L=rw(0x200)//32
+    for i=(L-tonumber(os.getenv("FLAT")))*32,L*32+63 do w2(0x4C00+2*i,0) w2(0x4000+2*i,0) end
+  end
   if f>3150 then
     local pos=rw(0x1ED7)
     for j,p in ipairs(POS) do
