@@ -1,4 +1,4 @@
-local OUT="./out/"
+local OUT=os.getenv("TG_ROOT").."/out/"
 local f=0
 local ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1700,"a"},
            {1900,"a"},{2100,"a"},{2300,"a"} }

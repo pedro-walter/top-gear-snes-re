@@ -1,4 +1,4 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local lo=tonumber(os.getenv("LO")) local hi=tonumber(os.getenv("HI") or os.getenv("LO"))
 local f0=tonumber(os.getenv("F0") or 3100)
 local seen={}

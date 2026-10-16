@@ -1,4 +1,4 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local seen={}
 emu.addMemoryCallback(function(a,v)
   if R.f<3100 then return end

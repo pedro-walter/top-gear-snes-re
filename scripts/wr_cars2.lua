@@ -1,4 +1,4 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local seen={}
 local function cb(a,v)
   if R.f<(tonumber(os.getenv("MINF") or 2900)) then return end

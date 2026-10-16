@@ -1,11 +1,11 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
 local function rb(a) return emu.read(a,mt) end
 local function rw(a) return rb(a)|(rb(a+1)<<8) end
 local function ww(a,v) emu.write(a,v&0xFF,mt) emu.write(a+1,(v>>8)&0xFF,mt) end
 local function sw(v) if v>=0x8000 then return v-0x10000 end return v end
 local DIFF=tonumber(os.getenv("DIFF") or 0)
-local fh=io.open("./out/rubber_"..DIFF..".csv","w")
+local fh=io.open(os.getenv("TG_ROOT").."/out/rubber_"..DIFF..".csv","w")
 fh:write("f,top,gear2,lapC,lapP,cam59,cam46,fuel2,spd2,spdP,posC,posP,dif\n")
 emu.addMemoryCallback(function()
   if R.f<3000 then return end

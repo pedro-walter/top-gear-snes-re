@@ -1,7 +1,7 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
 local TRACK=tonumber(os.getenv("TRACK") or 0)
-local out=io.open("./out/vramw.txt","w")
+local out=io.open(os.getenv("TG_ROOT").."/out/vramw.txt","w")
 local lastaddr=nil
 emu.addMemoryCallback(function(addr,val)
   local s=emu.getState()

@@ -1,6 +1,6 @@
 -- Coverage trace: records first execution of every CPU address with M/X flags.
 -- Output: out/trace_<tag>.txt   lines "BBAAAA m x" ; also RAM-code bytes in out/ramcode_<tag>.txt
-local OUT="./out/"
+local OUT=os.getenv("TG_ROOT").."/out/"
 local TAG = "main"
 local LAST = 12000
 local f=0

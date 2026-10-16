@@ -1,10 +1,10 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local vr=emu.memType.snesVideoRam
 local cnt={}
 for _,a in ipairs({0x2115,0x2116,0x2117,0x2118,0x2119,0x420B,0x420C}) do
   emu.addMemoryCallback(function(addr,val) cnt[a]=(cnt[a] or 0)+1 end, emu.callbackType.write, a)
 end
-local out=io.open("./out/vramw3.txt","w")
+local out=io.open(os.getenv("TG_ROOT").."/out/vramw3.txt","w")
 local prev=""
 R.steer=function(f) return {} end
 R.run(2420,nil,function() out:close() end)

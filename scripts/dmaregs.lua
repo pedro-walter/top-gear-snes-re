@@ -1,6 +1,6 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
-local out=io.open("./out/dmaregs.txt","w")
+local out=io.open(os.getenv("TG_ROOT").."/out/dmaregs.txt","w")
 R.steer=function(f) return {} end
 emu.addEventCallback(function()
   if R.f>=2355 and R.f<=2362 then

@@ -23,6 +23,7 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 5. [Track data, scenery and object streams, per-track tables](docs/05-tracks-scenery-objects.md)
 6. [Track names, passwords, minimaps, day/night](docs/06-names-minimap-daynight.md)
 7. [Open items and corrections](docs/07-open-items-and-corrections.md)
+8. [Accelerator + brake cornering trick (P1 only)](docs/08-brake-cornering-trick.md)
 
 ## Tools (`tools/`, Python 3, run from the repo root with `python3 -I`)
 | tool | purpose |

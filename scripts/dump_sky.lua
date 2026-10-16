@@ -1,11 +1,11 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
 local TRACK=tonumber(os.getenv("TRACK") or 0)
 R.steer=function(f) return {} end
 R.run(3250,function(f)
   if f>=2000 and f<2400 then emu.write(0x1F06,TRACK,mt) end
   if f==3200 then
-    local fh=io.open("./out/sky_"..TRACK..".bin","wb")
+    local fh=io.open(os.getenv("TG_ROOT").."/out/sky_"..TRACK..".bin","wb")
     for a=0x7E3E00,0x7E3FFF do fh:write(string.char(emu.read(a,mt))) end
     for a=0x112,0x117 do fh:write(string.char(emu.read(a,mt))) end
     fh:close()

@@ -1,6 +1,6 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
-local out=io.open("./out/findoam.txt","w")
+local out=io.open(os.getenv("TG_ROOT").."/out/findoam.txt","w")
 R.steer=function(f) return {x=true} end
 R.run(3300,function(f)
   if f>=2000 and f<2400 then emu.write(0x1F06,0,mt) end

@@ -1,4 +1,4 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local lo,hi=tonumber(arg1 or "0x202"),0
 local seen={}
 local function cb(a,v)

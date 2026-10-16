@@ -1,10 +1,10 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
 local vr=emu.memType.snesVideoRam
 local TRACK=tonumber(os.getenv("TRACK") or 0)
 local A0,A1=tonumber(os.getenv("A0") or 0x1220),tonumber(os.getenv("A1") or 0x1440)
 local prev=""
-local out=io.open("./out/vramdiff.txt","w")
+local out=io.open(os.getenv("TG_ROOT").."/out/vramdiff.txt","w")
 R.steer=function(f) return {} end
 R.run(3100,function(f)
   if f>=2000 and f<2400 then emu.write(0x1F06,TRACK,mt) end

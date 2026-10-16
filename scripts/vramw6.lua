@@ -1,6 +1,6 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
-local out=io.open("./out/vramw6.txt","w")
+local out=io.open(os.getenv("TG_ROOT").."/out/vramw6.txt","w")
 local seenf={}
 local function dm()
   local m={}

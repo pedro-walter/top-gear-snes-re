@@ -1,5 +1,5 @@
-dofile("./scripts/common.lua")
-local fh=io.open("./out/ticks_"..(os.getenv("TAG") or "a")..".csv","w")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
+local fh=io.open(os.getenv("TG_ROOT").."/out/ticks_"..(os.getenv("TAG") or "a")..".csv","w")
 local function rb(a) return emu.read(a,emu.memType.snesMemory) end
 local function rw(a) return rb(a)|(rb(a+1)<<8) end
 local function sw(v) if v>=0x8000 then return v-0x10000 end return v end

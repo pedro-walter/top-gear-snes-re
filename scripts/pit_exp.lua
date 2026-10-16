@@ -1,4 +1,4 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
 local function rb(a) return emu.read(a,mt) end
 local function rw(a) return rb(a)|(rb(a+1)<<8) end
@@ -7,7 +7,7 @@ local function sw(v) if v>=0x8000 then return v-0x10000 end return v end
 local TRACK=tonumber(os.getenv("TRACK") or 3)
 local FUEL=tonumber(os.getenv("FUEL") or 0x2000)
 local FSET=tonumber(os.getenv("FSET") or 3300)
-local fh=io.open("./out/pit_"..TRACK..".csv","w")
+local fh=io.open(os.getenv("TG_ROOT").."/out/pit_"..TRACK..".csv","w")
 fh:write("f,cpos,clat,cfuel,cspd,cgear,pit88,flag2,ef0,lapC,lapP,pos\n")
 R.steer=function(f) return {x=true} end
 R.run(tonumber(os.getenv("MAXF") or 7000),function(f)

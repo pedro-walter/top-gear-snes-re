@@ -1,4 +1,4 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local seen={}
 local function cb(a,v)
   if R.f<1700 then return end

@@ -1,5 +1,5 @@
-dofile("./scripts/common.lua")
-local fh=io.open("./out/cars_"..(os.getenv("TAG") or "a")..".csv","w")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
+local fh=io.open(os.getenv("TG_ROOT").."/out/cars_"..(os.getenv("TAG") or "a")..".csv","w")
 local STEP=tonumber(os.getenv("STEP") or 30)
 local function rb(a) return emu.read(a,emu.memType.snesMemory) end
 local function rw(a) return rb(a)|(rb(a+1)<<8) end

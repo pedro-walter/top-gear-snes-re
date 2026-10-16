@@ -1,5 +1,5 @@
-dofile("./scripts/common.lua")
-local out=io.open("./out/vramw5.txt","w")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
+local out=io.open(os.getenv("TG_ROOT").."/out/vramw5.txt","w")
 local seen={}
 local function pcs() local s=emu.getState() return (s["cpu.k"]<<16)|s["cpu.pc"] end
 local function lg(name) return function(addr,val)

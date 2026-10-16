@@ -3,6 +3,7 @@
 # LD_PRELOAD works around std::bad_cast in MesenCore.so static init (std::regex vs. static libstdc++).
 # HOME is isolated so the user's real ~/.config/Mesen2 is untouched.
 D="$(cd "$(dirname "$0")/.." && pwd)"
+export TG_ROOT="$D"
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 export HOME="$D/tools/mesen-home"
 sed -i 's/"AllowIoOsAccess": false/"AllowIoOsAccess": true/; s/"ScriptTimeout": [0-9]*/"ScriptTimeout": 30/' "$HOME/.config/Mesen2/settings.json"

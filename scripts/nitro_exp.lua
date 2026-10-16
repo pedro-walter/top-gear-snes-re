@@ -1,9 +1,9 @@
 -- Nitro experiment: flatten hills/curves, poke start speed & gear policy, press nitro, log speed per frame.
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local V0=tonumber(os.getenv("V0") or 0)
 local POL=os.getenv("POL") or "f2"     -- f<g> fixed gear index, auto, or seq:<th>:<g>,...
 local F0=3150
-local fh=io.open("./out/nitro_"..POL:gsub("[:,]","_").."_"..V0..".csv","w")
+local fh=io.open(os.getenv("TG_ROOT").."/out/nitro_"..POL:gsub("[:,]","_").."_"..V0..".csv","w")
 local mt=emu.memType.snesMemory
 local function rb(a) return emu.read(a,mt) end
 local function rw(a) return rb(a)|(rb(a+1)<<8) end
@@ -11,7 +11,7 @@ local function ww(a,v) emu.write(a,v&0xFF,mt) emu.write(a+1,(v>>8)&0xFF,mt) end
 local function sw(v) if v>=0x8000 then return v-0x10000 end return v end
 local seq={}
 if POL:sub(1,4)=="seq:" then for th,g in POL:sub(5):gmatch("(%d+):(%d+)") do seq[#seq+1]={tonumber(th),tonumber(g)} end end
-local tf=io.open("./out/nt_"..POL:gsub("[:,]","_").."_"..V0..".csv","w")
+local tf=io.open(os.getenv("TG_ROOT").."/out/nt_"..POL:gsub("[:,]","_").."_"..V0..".csv","w")
 tf:write("f,v,gear,nitro,fuel,pos,slope,top,flag\n")
 local entry={}
 emu.addMemoryCallback(function() if R.f>=F0 then entry={sw(rw(0x1E5A)),rw(0x1E72),rw(0x1E6C),rw(0x1E62),rw(0x1ED7),rw(0x1EF5)} end end, emu.callbackType.exec, 0x05D2E0, 0x05D2E0)

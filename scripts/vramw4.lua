@@ -1,6 +1,6 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local mt=emu.memType.snesMemory
-local out=io.open("./out/vramw4.txt","w")
+local out=io.open(os.getenv("TG_ROOT").."/out/vramw4.txt","w")
 local last2118pc,cnt=-1,0
 local function pcs() local s=emu.getState() return (s["cpu.k"]<<16)|s["cpu.pc"] end
 local function lg(name) return function(addr,val)

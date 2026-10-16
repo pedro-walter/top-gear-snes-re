@@ -1,4 +1,4 @@
-dofile("./scripts/common.lua")
+dofile(os.getenv("TG_ROOT").."/scripts/common.lua")
 local function rb(a) return emu.read(a,emu.memType.snesMemory) end
 local function rw(a) return rb(a)|(rb(a+1)<<8) end
 R.steer=function(f) return {x=true} end
