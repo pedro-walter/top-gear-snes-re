@@ -14,7 +14,7 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   (so object sets, tunnels-free scenery and road widths fit the environment), exactly one pit piece (template 20 +
   pit objects, pit word like `00:DF24`), expansion into the WRAM tables `$7E4000/$4C00/$5800/$6400` identical to
   `00:BF44`. **`tools/rando_test.py` runs the 65816 generator in headless Mesen (harness ROM) and compares all four
-  tables with the Python reference: 500/500 seeds identical.**
+  tables with the Python reference: 1500/1500 seeds identical.**
   * The loader expands **L+2** pieces (one wrap copy of piece 0 and one look-ahead copy of piece 1). The object scanner
     (`00:E20D`) reads up to 0x58 bytes past the lap end; uninitialised data there made a group loop run ~65 k iterations
     (game ran at 1/4 speed, garbage graphics). Fixed by generating the extra piece.
@@ -34,6 +34,10 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
 * Smoke test (`tools/rando_smoke.sh seed...`): 40 random seeds, ~5000 frames each with an autopilot, no stalls
   (race_frames within 6% of real time; the longer tracks are slightly slower). `scripts/rando_pit.lua`: the computer car
   pits on a generated track (state FFFF..0000, fuel refilled to A7FF).
+* Human pit stop (`tools/rando_pit_test.sh "seed target"`, `scripts/rando_pit_human.lua`): the player car is steered beyond the pit
+  entrance object (the object's side bit set = *left* = negative lateral; targets -9300 style 41, -17500 style 45,
+  +17500 style 47) and the pit sequence runs to the end with a full tank - verified on New York, Hiroshima, Rio, Rome.
+* 2-player mode (`TWO=1 scripts/rando_menu.lua`) starts and renders both views.
 * Full loop (`scripts/rando_loop.lua`): menu -> race -> results -> ranking -> main menu -> new race.
 * Demo/attract mode (title idle) starts a demo race on whatever seed is in `7F:F800`.
 
