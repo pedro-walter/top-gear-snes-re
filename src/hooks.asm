@@ -59,7 +59,7 @@ hp_pos:
 
 ; ---- 0F:8487  results screen finished: back to the title/main menu instead of the championship flow ---------
 .org $0F8487
-    jmp $815A                   ; location_screen (title -> main menu -> splash), RTL returns to 00:8873 -> main_restart
+    jml hook_afterresults       ; was: SEP #$20 / LDA #$10 / ... championship flow
 
 .org $10F100
 seed_init:                      ; first use after power-on: default seed, random mode
@@ -70,6 +70,7 @@ seed_init:                      ; first use after power-on: default seed, random
     sta.l $7FF806
     lda #$0000
     sta.l $7FF804
+    sta.l SKIPT
     lda #$1234
     sta.l $7FF800
     lda #$5678
@@ -129,6 +130,7 @@ hp_ret:
 SDL     = $7FF800               ; seed low word          (see gen.asm)
 SDH     = $7FF802               ; seed high word
 SFLAG   = $7FF808               ; 1 while the hex keypad is active
+SKIPT   = $7FF80A               ; 1: skip the title screen once (after the results)
 V_DST   = $7FF8A0
 V_LO    = $7FF8A2
 V_HI    = $7FF8A4
@@ -159,6 +161,10 @@ t_oam:      jsr $9DDD
 t_text:     jsr $943D
     rtl
 t_9dfc:     jsr $9DFC
+    rtl
+t_cleartext: jsr $8F80
+    rtl
+t_vbl:      jsr $A24D
     rtl
 t_seedmenu: jml seed_menu       ; target of the patched "JMP country_menu"
 
@@ -394,6 +400,46 @@ hh_orig:
     sta $60
     jml $0F957F
 
+hook_afterresults:              ; results screen finished: straight back to the main menu (title skipped once)
+    rep #$30
+    lda #$0001
+    sta.l SKIPT
+    jml $0F815A                 ; location_screen (title -> main menu -> splash), RTL returns to 00:8873 -> main_restart
+
+hook_title:                     ; 0F:8C95 title_screen entry
+    rep #$30
+    lda.l $7FF806               ; the seed area is only valid after the first menu visit (WRAM is random at power-on)
+    cmp #$A55A
+    bne ht_orig
+    lda.l SKIPT
+    cmp #$0001
+    bne ht_orig
+    lda #$0000
+    sta.l SKIPT
+    jsl t_cleartext
+    lda #$0708
+    sta $66
+    lda #$0107
+    sta $1F84
+    sta $1FA1
+    sep #$20
+    lda #$10
+    sta $212C
+    stz $212D
+    lda #$81
+    sta $4200
+    lda #$03
+    sta $2101
+    rep #$20
+    lda #$008F
+    sta $42
+    lda #$0001
+    jsl t_vbl
+    jml $0F8F5E                 ; TS=BG2, menu_graphics_load, main_menu
+ht_orig:
+    jsl t_cleartext
+    jml $0F8C9A
+
 hook_redraw:                    ; text_entry_redraw: typed characters in the small font while the seed keypad is active
     lda.l SFLAG
     beq hr_orig
@@ -488,3 +534,7 @@ ps_done:
     rts
 ps_roll:
     jmp roll_seed
+
+.org $0F8C95
+    jml hook_title              ; was: REP #$30 / JSR clear_text_buffer
+    nop

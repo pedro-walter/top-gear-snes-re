@@ -15,6 +15,8 @@ local function sw(v) if v>=0x8000 then return v-0x10000 end return v end
 local log=io.open(ROOT.."/out/"..TAG..".txt","w")
 local ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1700,"a"} }
 local f=0
+FIN0=nil
+APR={} for t in (os.getenv('APRESS') or '100,300,500'):gmatch('%d+') do APR[#APR+1]=tonumber(t) end
 local function shot(name)
   local fh=io.open(ROOT.."/out/"..TAG.."_"..name..".png","wb") fh:write(emu.takeScreenshot()) fh:close()
 end
@@ -23,8 +25,10 @@ emu.addEventCallback(function()
   for _,e in ipairs(ev) do if f>=e[1] and f<e[1]+6 then p[e[2]]=true end end
   if f>=3000 then
     local fin=rw(0x1EB0)
-    if fin>=10 or rw(0x1EB0)>=10 then
-      if (f//90)%2==0 then p.a=true end
+    if fin>=10 then
+      FIN0=FIN0 or f
+      local d=f-FIN0
+      for _,t in ipairs(APR) do if d>=t and d<t+6 then p.a=true end end
     else
       p.x=true
       local lat=sw(rw(0x1E8A))
