@@ -183,8 +183,8 @@ slope_walk:
     sta POS
     lda LEN
     sec
-    sbc #2
-    sta END                     ; the 2 pieces before the line stay flat
+    sbc #1
+    sta END
     lda HILL
     asl a
     clc
@@ -308,7 +308,7 @@ curve_walk:
     sta POS
     lda LEN
     sec
-    sbc #2
+    sbc #1
     sta END
     lda CURVY
     clc
@@ -1246,6 +1246,15 @@ ac_kl:
     lda CNT
     cmp T5
     bcc ac_fin                  ; e < j
+    lda T5
+    cmp #48
+    bcc ac_skip                 ; no signs near the start gantry (graphics conflict)
+    lda LIM
+    sec
+    sbc #48
+    cmp T5
+    bcc ac_skip
+    beq ac_skip
     lda T5
     lsr a
     lsr a

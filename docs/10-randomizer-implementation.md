@@ -70,7 +70,7 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   road style of type 3, mirror). The pit word's bit 15 is not left/right. `hook_style` (`00:C270`) overrides the per-environment road-style word
   `00:DEE4` (bits 9-11, bit 15) so the pit lane is a proper road in environments whose own type-3 style is something else.
 * Flags: `13` in b0/b1 of pieces pp-2 and pp-1 on the pit's side; chevrons every 4 slots from 20 slots before a curve to its end.
-  The last pieces before the line stay flat/straight and empty.
+  Only the very last piece before the line is empty and straight (curves may run up to it, as on the original Florence); no chevrons within 48 slots of the start gantry (graphics conflict garbled them on seed 12345678).
 * **Start gantry**: the scanner `00:E20D` keeps at most 8 distinct graphic ids; extra object types from the pit/chevron pieces make the
   gantry (group `$8002`) disappear in some environments. `tools/gantry_search.py` finds per environment object types to drop from the copied
   source (table `DROP` in trackgen.py / `dropt` in gen.asm). All 32 environments show the gantry (`out/ge_sheet.png`).

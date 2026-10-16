@@ -176,8 +176,8 @@ def generate(seed):
     hill = r.rnd(4)
     curvy = r.rnd(3)
     P = L + 2                                            # pieces 0..L-1, L = wrap copy of 0, L+1 = copy of 1 (scanner look-ahead)
-    slope = slope_walk(r, L - 1, hill) + [0, 0]; slope.append(slope[1])   # the 2 pieces before the line stay flat and straight
-    curve = curve_walk(r, L - 1, curvy) + [0, 0]; curve.append(curve[1])
+    slope = slope_walk(r, L, hill) + [0]; slope.append(slope[1])
+    curve = curve_walk(r, L, curvy) + [0]; curve.append(curve[1])
     ssc, srecs, allowed, sn = source(env)
     scen = [0] * P
     recs = [None] * (2 * P)
@@ -262,7 +262,7 @@ def add_chevrons(t, curve, objs):
             while j <= e:
                 pc = j // 32
                 w = objs[j]
-                if not (pp - 2 <= pc <= pp or pc == L - 1 or w & 0x8000 or (w & 0xFE00) == 0x7400):
+                if not (j < 48 or j >= L * 32 - 48 or pp - 2 <= pc <= pp or pc == L - 1 or w & 0x8000 or (w & 0xFE00) == 0x7400):
                     objs[j] = (typ << 9) | (side << 8) | 0x7C
                 j += 4
             i = e + 1
