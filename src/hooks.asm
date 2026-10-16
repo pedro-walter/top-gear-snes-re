@@ -179,7 +179,7 @@ t_seedmenu: jml seed_menu       ; target of the patched "JMP country_menu"
 .org $0FA6CD
     .db "SEED   "               ; label "COUNTRY" of main menu entry 2
 .org $0FA725
-    .dw $000E                   ; $A721[2]: highlight bar length of entry 2 (was 8)
+    .dw $000B                   ; $A721[2]: highlight bar length of entry 2 (was 8)
 
 ; ---- hex keypad: the password page (8) is reused (passwords do not exist any more) --------------------------
 .org $0FA9E0
@@ -317,9 +317,7 @@ bs_sh:
     bne bs_l
     rts
 
-hook_menu_draw:                 ; main menu: draw the seed after the label "SEED"
-    rep #$30
-    jsr seed_init
+draw_seed_row:                  ; main menu: "xxxxxxxx" after the label SEED (small font)
     lda #$0E0E                  ; x=14, y=14
     sta.l STR1
     ldx #STR1+2
@@ -329,9 +327,32 @@ hook_menu_draw:                 ; main menu: draw the seed after the label "SEED
     sta.l STR1+12
     ldx #STR1
     jsl t_dstr
+    rts
+
+hook_menu_draw:                 ; main menu: draw the seed after the label "SEED"
+    rep #$30
+    jsr seed_init
+    jsr draw_seed_row
     stz $5A
     ldy $1FB0
     rtl
+
+hook_lr:                        ; main menu, Left/Right pressed: entry 0 toggles 1/2 players (original), entry 2 rolls a new seed
+    rep #$30
+    lda $5A
+    beq hlr_orig
+    cmp #$0002
+    beq hlr_roll
+    jml $0F922F
+hlr_orig:
+    jml $0F9246
+hlr_roll:
+    jsr roll_seed
+    jsr draw_seed_row
+    jsl t_oam
+    lda #$0084
+    sta $0424
+    jml $0F922F
 
 hook_loc:                       ; splash screen: the seed under the header
     rep #$30
@@ -538,3 +559,6 @@ ps_roll:
 .org $0F8C95
     jml hook_title              ; was: REP #$30 / JSR clear_text_buffer
     nop
+
+.org $0F9242
+    jml hook_lr                 ; was: LDA $5A / BNE $922F

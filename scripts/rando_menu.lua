@@ -14,6 +14,7 @@ local function press(f,b) for i=0,5 do sched[f+i]=b end end
 local f=1300
 press(f,"start") f=f+120 press(f,"start") f=f+180     -- title -> main menu
 local function key(b) press(f,b) f=f+24 end
+if os.getenv("TWO") then key("right") end
 key("down") key("down") key("a") f=f+120                -- entry 2 (SEED), open the keypad
 local cur_r,cur_c=0,0
 local HEXC="0123456789ABCDEF"
