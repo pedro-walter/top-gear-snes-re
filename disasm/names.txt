@@ -1,0 +1,5 @@
+# BBAAAA name     (hand-verified labels; fed to tools/disasm.py --names)
+0F8000 nmi_handler_menu        # target of WRAM NMI stub during title/menus
+00EC1A nmi_handler_race        # target of WRAM NMI stub during the race
+00EC5B irq_handler_race
+05D2E0 car_update_speed_gear   # per-tick: gear shift, accel via PPU multiplier, drag, clamp -> $1E5A

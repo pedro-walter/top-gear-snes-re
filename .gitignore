@@ -1,0 +1,9 @@
+# copyrighted game data and anything derived from it
+*.sfc
+*.smc
+out/
+disasm/top_gear.asm
+# third-party emulator and its settings/caches
+tools/mesen/
+tools/mesen-home*/
+__pycache__/
