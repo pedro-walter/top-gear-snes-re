@@ -24,3 +24,13 @@
 - 3rd gear + nitro trick, user-confirmed by play: 3rd gear to ~250 km/h then 5th. Model (physics.py, nitro, full tank, flat) crossover where 5th >= 3rd: car table 0: 154 km/h (red, "same above ~150"), table 2: 221 (purple "~220"), tables 1/3: 248 (white/blue "~250"). Colour->index mapping inferred, to verify with $1F8F. Nitro 3rd-gear ceiling ~265-273 km/h.
 
 
+
+## Corrections found while annotating the disassembly (session 6)
+* `$1FF6` is **not** a units flag: it is the title-screen **attract-mode countdown / demo flag** ($04B0 frames, then `0F:90E6`
+  starts a demo race on a random track and sets it to `$8000`; any button press ends the demo). The HUD's "km/h when
+  negative" in docs/03 is just "demo races show km/h".
+* The per-frame race work does not run in the NMI: `nmi_handler_race` only reads the pads. The IRQ handler dispatches
+  through the pointer in `$0A` (`00:B6D1` ...) and the big vblank routine is called through `$08` (`00:B75A`); day/night
+  (`00:BAB9`), map dots, pit-crew DMA and the scenery scanner are sections of it.
+* Menu text entry (`0F:943D`) is a 6-column grid (`A..Z`, then `3`/`4` glyph cells = space/delete, `END`) writing up to 8
+  characters to `$68..$6F`; the main menu (`0F:918B`) has 5 entries (players, skill, country, mph/kph, play game).
