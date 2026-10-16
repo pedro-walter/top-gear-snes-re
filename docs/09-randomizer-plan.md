@@ -146,4 +146,4 @@ C D E F
 5. **1 MB ROM** is fine.
 6. Distribution format is deferred; focus on a working prototype first.
 
-Status: planning only, implementation not started (waiting for the go-ahead).
+Status: implementation started and the prototype works - see docs/10-randomizer-implementation.md.

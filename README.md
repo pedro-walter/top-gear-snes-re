@@ -8,6 +8,12 @@ runtime inspection in the Mesen2 emulator.
 **This repository contains no game data.** You need your own legally obtained ROM
 (`Top Gear (USA).sfc`, 512 KB, LoROM, no header). Put it in the repo root, or point `TOPGEAR_ROM` at it.
 
+## Randomizer (work in progress)
+`python3 -I tools/build_rando.py` turns your ROM into `out/rando.sfc` (1 MB): every race is a **random track generated on the
+console from an 8-hex-digit seed** (3-8 laps, always a pit stop, one of the 32 original environments). The main menu shows
+`SEED xxxxxxxx` (A = hex keypad, Left/Right = new random seed); the results screen returns to the menu and the seed is kept
+for a replay. `python3 -I tools/make_ips.py` writes an IPS patch (our bytes only). Details and tests: docs/09, docs/10.
+
 ## Tracks (32 = 8 countries × 4)
 USA: 0 Las Vegas, 1 Los Angeles, 2 New York, 3 San Francisco · South America: 4 Rio, 5 Machu Picchu,
 6 Chichen Itza, 7 Rain Forest · Japan: 8 Tokyo, 9 Hiroshima, 10 Yokohama, 11 Kyoto ·
@@ -24,7 +30,8 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 6. [Track names, passwords, minimaps, day/night](docs/06-names-minimap-daynight.md)
 7. [Open items and corrections](docs/07-open-items-and-corrections.md)
 8. [Accelerator + brake cornering trick (P1 only)](docs/08-brake-cornering-trick.md)
-9. [Randomizer plan (draft)](docs/09-randomizer-plan.md)
+9. [Randomizer plan and decisions](docs/09-randomizer-plan.md)
+10. [Randomizer implementation status, memory map, tests](docs/10-randomizer-implementation.md)
 
 ## Tools (`tools/`, Python 3, run from the repo root with `python3 -I`)
 | tool | purpose |
@@ -34,6 +41,7 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 | `track_atlas.py`, `objmap.py`, `minimaps.py`, `minimap_path.py`, `daynight.py` | render track maps/minimaps (need Pillow) |
 | `physics.py` | exact model of the speed/gear/nitro physics |
 | `names.py` | track and country names |
+| `asm65816.py`, `build_rando.py`, `trackgen.py`, `make_ips.py`, `rando_test.py` | randomizer: assembler, ROM builder, Python reference generator, IPS export, generator test against the console code (headless Mesen) |
 
 ## Resuming the work: the annotated disassembly
 `make disasm` builds `disasm/top_gear.asm` (needs your ROM, `out/trace_main.txt` and `out/wram_3300.bin`, produced by
