@@ -8,6 +8,8 @@
 
 ; ---- scratch variables (bank $7F; all >= $0100 so the assembler uses absolute addressing) -----------------
 SEED    = $F800         ; 4 bytes   persistent seed (menu writes it)
+SMODE   = $F804         ; 0 = roll a random seed on PLAY, 1 = keep the typed seed
+SMAGIC  = $F806         ; $A55A once the seed area was initialised
 RS      = $F810         ; rng state low word
 RSH     = $F812         ; rng state high word
 T0      = $F820
@@ -178,8 +180,7 @@ slope_walk:
     jsr clear_arr
     lda #1
     sta POS
-    lda PN
-    dec a
+    lda LEN
     sta END
     lda HILL
     asl a
@@ -198,6 +199,13 @@ sw_loop:
     lda POS
     cmp END
     bcc sw_go
+    ldx LEN                     ; look-ahead piece L+1 = copy of piece 1
+    inx
+    txa
+    asl a
+    tax
+    lda SLOPE+2
+    sta SLOPE,x
     rts
 sw_go:
     lda END
@@ -295,8 +303,7 @@ curve_walk:
     jsr clear_arr
     lda #1
     sta POS
-    lda PN
-    dec a
+    lda LEN
     sta END
     lda CURVY
     clc
@@ -306,6 +313,13 @@ cw_loop:
     lda POS
     cmp END
     bcc cw_go
+    ldx LEN
+    inx
+    txa
+    asl a
+    tax
+    lda CURVE+2
+    sta CURVE,x
     rts
 cw_go:
     lda END
@@ -567,8 +581,7 @@ ps_kd:
     lda.l $0C0000,x
     and #$00FF
     sta SCEN
-    ldy PN
-    dey
+    ldy LEN
     tya
     asl a
     tax
@@ -583,9 +596,8 @@ ps_kd:
     tax
     ldy #RECS+10
     jsr copy10
-    ; piece P-1: dest = RECS + 20*(P-1)
-    lda PN
-    dec a
+    ; piece L: dest = RECS + 20*L
+    lda LEN
     jsr rec_dest
     sta T4
     ldx SOB
@@ -603,13 +615,35 @@ ps_kd:
     ; runs
     lda #1
     sta POS
-    lda PN
-    dec a
+    lda LEN
     sta END
 ps_o:
     lda POS
     cmp END
     bcc ps_o2
+    ; look-ahead piece L+1 = copy of piece 1
+    lda SCEN+2
+    ldx LEN
+    inx
+    txa
+    asl a
+    tax
+    lda SCEN+2
+    sta SCEN,x
+    lda LEN
+    inc a
+    jsr rec_dest
+    tay                         ; dest RECS+20*(L+1)
+    ldx #0
+ps_cp:
+    lda RECS+20,x
+    sta $0000,y
+    iny
+    iny
+    inx
+    inx
+    cpx #20
+    bne ps_cp
     rts
 ps_o2:
     lda ALCNT
@@ -1027,7 +1061,7 @@ rando_generate:
     plb
     rts
 
-gen_main:
+gen_init:                       ; RNG state from the seed (+32 warm-up steps)
     lda SEED
     sta RS
     lda SEED+2
@@ -1044,6 +1078,21 @@ gm_w:
     jsr rng_step
     dex
     bne gm_w
+    rts
+
+rando_env:                      ; computes only the first three draws -> ENV, LEN, PN, LAPS.  Same calling convention as rando_generate
+    phb
+    sep #$20
+    lda #$7F
+    pha
+    plb
+    rep #$30
+    jsr gen_init
+    jsr draw_basic
+    plb
+    rts
+
+draw_basic:
     lda #32
     jsr rnd
     sta ENV
@@ -1053,12 +1102,18 @@ gm_w:
     adc #24
     sta LEN
     inc a
+    inc a
     sta PN
     lda #6
     jsr rnd
     clc
     adc #3
     sta LAPS
+    rts
+
+gen_main:
+    jsr gen_init
+    jsr draw_basic
     lda #4
     jsr rnd
     sta HILL

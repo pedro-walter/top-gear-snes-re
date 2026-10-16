@@ -134,24 +134,26 @@ def generate(seed):
     laps = 3 + r.rnd(6)                                  # 3..8
     hill = r.rnd(4)
     curvy = r.rnd(3)
-    P = L + 1
-    slope = slope_walk(r, P, hill)
-    curve = curve_walk(r, P, curvy)
+    P = L + 2                                            # pieces 0..L-1, L = wrap copy of 0, L+1 = copy of 1 (scanner look-ahead)
+    slope = slope_walk(r, L + 1, hill); slope.append(slope[1])
+    curve = curve_walk(r, L + 1, curvy); curve.append(curve[1])
     ssc, srecs, allowed, sn = source(env)
     scen = [0] * P
     recs = [None] * (2 * P)
-    for dst in (0, P - 1):                               # start/finish piece (and its wrap-around copy)
+    for dst in (0, L):                                   # start/finish piece (and its wrap-around copy)
         scen[dst] = ssc[0]
         recs[2 * dst] = list(srecs[0]); recs[2 * dst + 1] = list(srecs[1])
     pos = 1
-    while pos < P - 1:
+    while pos < L:
         s0 = allowed[r.rnd(len(allowed))]
         run = 2 + r.rnd(5)
         j = s0
-        while run and pos < P - 1 and j in allowed:
+        while run and pos < L and j in allowed:
             scen[pos] = ssc[j]
             recs[2 * pos] = list(srecs[2 * j]); recs[2 * pos + 1] = list(srecs[2 * j + 1])
             pos += 1; j += 1; run -= 1
+    scen[L + 1] = scen[1]
+    recs[2 * (L + 1)] = list(recs[2]); recs[2 * (L + 1) + 1] = list(recs[3])
     pp = 4 + r.rnd(L - 8)                                # pit piece 4..L-5
     st, side, grp = PIT_STYLES[r.rnd(len(PIT_STYLES))]
     scen[pp] = st
@@ -206,13 +208,12 @@ def validate(t):
     errs = []
     P, L = t['P'], t['L']
     if not (24 <= L <= 46 and 3 <= t['laps'] <= 8): errs.append('range')
-    if t['slope'][0] or t['slope'][-1] or t['curve'][0] or t['curve'][-1]: errs.append('ends not flat')
-    sl = tables(t)['slope']
-    if sl[0] != 0 or sl[-1] != 0: errs.append('slope ends %d %d' % (sl[0], sl[-1]))
+    if t['slope'][0] or t['slope'][L] or t['curve'][0] or t['curve'][L]: errs.append('ends not flat')
     # continuity: last word of each piece == first word of next (in signed terms)
     for name in ('slope', 'curve'):
         w = tables(t)[name]
         for k in range(P - 1):
+            if k == L: continue
             a, b = s16(w[32 * k + 31]), s16(w[32 * (k + 1)])
             if abs(a - b) > 400 and name == 'slope' or abs(a - b) > 8 and name == 'curve':
                 errs.append('%s jump piece %d (%d->%d)' % (name, k, a, b)); break
