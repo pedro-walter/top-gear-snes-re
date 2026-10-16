@@ -136,13 +136,14 @@ C D E F
 * Real-hardware/flash-cart behaviour of a 1 MB LoROM image is untested (emulators fine).
 * 2-player mode, demo mode (`90E6`) and the attract loop all go through `$1F06`: they must be pointed at a seed too.
 
-## 7. Open questions for the owner
+## 7. Decisions (owner, 2026-10-16)
 
-1. **Season or single race?** After a race, should the next race (a) repeat the same seed, (b) roll a new one, or (c)
-   follow a chain `seed -> hash(seed)` so a shared seed is a whole "season"? Default proposal: (a) with the menu
-   to change seed.
-2. **Seed length:** 8 hex digits (32 bit) fits the existing 8-character entry buffer. OK?
-3. **Letter/key layout** for the hex entry (you said you would give feedback).
-4. **Environments:** draw from all 32 originals (recommended), or restrict to a subset?
-5. **1 MB ROM** acceptable? (Alternative: squeeze into ~6 KB of free space — unlikely to fit.)
-6. **Distribution:** BPS/IPS patch + Python build script (recommended, no copyrighted data in the repo).
+1. After a race, **return to the main menu**. No accumulated championship points: show only that race's timings and
+   points. The seed stays selected (replay) until changed in the menu.
+2. Seed = **8 hex digits** (32 bit).
+3. Hex keypad layout (section 4) is approved.
+4. **Reuse the 32 original environments**; no new environments.
+5. **1 MB ROM** is fine.
+6. Distribution format is deferred; focus on a working prototype first.
+
+Status: planning only, implementation not started (waiting for the go-ahead).
