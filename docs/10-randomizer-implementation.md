@@ -25,10 +25,22 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   `00:BF38` (laps), `00:C162` (pit word / side), `0F:9281` (PLAY GAME: derive environment from the seed, clear the
   points table so the results/ranking show only this race), `0F:8487` (results -> back to the main menu, title skipped once),
   menu entry 2 `COUNTRY` -> `SEED`.
-* **Seed UI**: main menu shows `SEED xxxxxxxx`; A opens the keypad (the unused PASSWORD page 8: big-font grid cells blank,
-  digits drawn with the small font because the big gold font has no 0,5-9). Keys: `0..F`, `3 4` glyph cells = delete/space,
-  `END` accepts. Typing nothing and `END` = roll a new random seed (H/V counters + game RNG words). Seed persists after the
-  race (replay). The splash screen shows `SEED xxxxxxxx`, distance (pieces/lap * 15/256 km) and LAPS of the generated track.
+* **Seed UI**: main menu shows `SEED xxxxxxxx`; Left/Right on that row rolls a new seed; A opens the keypad
+  (`src/keypad.asm`, page 8 of the menus reused): **big gold glyphs**, a 6x3 grid `0 1 2 3 4 5 / 6 7 8 9 b A.. ` see below, typed code in the
+  box in the big font, selection bar = the game's own sprite pill, cursor wraps inside the 18 cells (no blank cell can be
+  highlighted). Keys: A = press, B/Y/X/Select = delete, START or the `END` key = accept; the `<-` key deletes. Typing nothing and
+  accepting = roll a new random seed. The seed persists after the race (replay). The splash screen shows `SEED xxxxxxxx`,
+  distance (pieces/lap * 15/256 km) and LAPS.
+  Grid: `0 1 2 3 4 5 / 6 7 8 9 A B / C D E F <- END`; hex digit 11 is drawn as a lowercase `b` because the squared `B` of the
+  font is identical to an `8`.
+* **Missing digits** (`tools/bigfont.py`): the gold font (VRAM tiles 128..255, 16x16 glyphs in sprite layout, slot 0 blank, 1..26 = A..Z,
+  28 = `1`, 29 = `2`, 30/31 arrows) has no 3,4,6,7,9 (0 = `O`, 5 = `S`, 8 = `B`). They are cut from rectangles of existing glyphs
+  *on the console* when the keypad opens (reads the tiles back from VRAM in forced blank, writes VRAM tile 256.. by DMA): the repo
+  and the IPS only contain the rectangle recipe, no game graphics.
+* **Signs** (docs/07 object catalogue): the source track's chevron types (8, 9) and pit flags (13) are never copied; the generator places
+  5 chevrons (every 4 slots, last one 4 slots before the curve) ahead of every curve onset - type 9 (`<`) on the right before a
+  positive curve, type 8 (`>`) on the left before a negative one - and pit flags (type 13, template `$18`/`$1A`) on the two pieces
+  before the pit like the original tracks do. Python reference and 65816 code are identical (`add_chevrons`).
 * **No minimap**: the decompressed minimap bitmap is blanked (`0F:8232`), the three HUD marker sprites are never drawn
   (`00:8966`, `00:8A2C` return immediately), the lap-record line is moved off screen.
 * Smoke test (`tools/rando_smoke.sh seed...`): 40 random seeds, ~5000 frames each with an autopilot, no stalls
@@ -47,5 +59,8 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
 * No procedural minimap yet (box stays empty). The pit lane needs a scenery template 20 (type 3) piece: verified visually
   for several environments but not exhaustively.
 * Fuel balance: 8 laps of a 46-piece track need two pit stops; the AI handles that, the player has to use the pit.
+* Pitfall: **Mesen auto-applies `<rom name>.ips`** found next to the ROM. A stale `out/rando.ips` from an earlier build was applied on top
+  of the new `out/rando.sfc` in the GUI (symptom: Left/Right on the SEED row crashed into RAM at `00:2020`); `build_rando.py` now rewrites
+  the IPS on every build. Headless `--testRunner` ignores it, so the bug only showed in the GUI.
 * 2-player mode, skill levels and the options use the original code (not individually re-tested).
 * The unused lap-record table `$1FB2..$1FF1` is used as string scratch for the menu hooks.

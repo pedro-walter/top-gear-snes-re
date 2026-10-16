@@ -50,3 +50,16 @@
   them (besides the start gantry `$8002`).
 * Menu page tables `0D:C716/C738/C75A` (a, b, c lists per page) hold 17 pages; page 8 is the PASSWORD grid, page 3 the name grid,
   page 15 the location splash. `$0F:ABE9` is the splash text list, `0D:C6D6/C6F6[track]` laps/pieces for the splash statistics.
+
+## Object type catalogue and menu font (randomizer work, session 8)
+Seen by placing one type at a time in a running race (`scripts/rando_types.lua`, `tools/sheet_types.py`; graphics are per type, some
+art may differ by environment): 5 = KEMCO billboard, 6 = barrels, 7 = hazard-stripe barrier, **8 = `>` chevron (right turn), 9 = `<` chevron
+(left turn)**, 10 = warning triangle, 11/12 = street lamps, **13 = PITS flag**, 14/15 = fences/bushes, 21-23 = palms, 24-31 = trees/cacti/
+plants, 30 = GREMLIN billboard, 37-47 = billboards, 53-57 = flag poles/pennants, 58 = pit entrance trigger. 1-4, 16-17 = other cars.
+In the original data type 8 is always on the left (side bit 1) before a *negative* curve and type 9 on the right before a positive one;
+a chevron's direction is fixed by its type, not by the side it stands on.
+Menu font: VRAM tiles 128..255 hold the 16x16 gold glyphs in sprite layout (slot s = tile 128 + (s>>3)*32 + (s&7)*2, bottom half +16),
+the small white font is a separate block (`0F:BBA7` -> VRAM word $1000); text drawn by `draw_string_to_buffer` writes tile words into the
+buffer at `$0C6C` (stride $40 per tile row; the second pass adds 16 to the tile numbers for the lower half). `draw_selection_bar` builds the
+blue pill from **OAM sprites** (tiles `$0EC2..$0EC8`, `$4A` = length in sprites, X = OAM byte offset; X=8 keeps sprite 0 for the text cursor).
+Graphics decompressor `0F:B306` (LZ variant, 2 KB ring): block `0D:A44D` -> VRAM word $1800 is the gold font.
