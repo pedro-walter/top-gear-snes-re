@@ -18,12 +18,12 @@ emu.addMemoryCallback(function()
   i=i+1
   if i>#seeds then out:close() emu.stop(0) return end
   local s=seeds[i]
-  ww(0x10800,s&0xFFFF) ww(0x10802,(s>>16)&0xFFFF)
+  ww(0x1F800,s&0xFFFF) ww(0x1F802,(s>>16)&0xFFFF)
 end, emu.callbackType.exec, SYM.h_loop)
 emu.addMemoryCallback(function()
   if i<1 or i>#seeds then return end
-  local P=rw(0x10834)
-  out:write(string.pack("<I4I2I2I2I2I2",seeds[i],rw(0x10830),rw(0x10832),rw(0x10836),rw(0x1083E),P))
-  dump(0x4000,P*64) dump(0x4C00,P*64) dump(0x5800,P*64) dump(0x6400,P*64) dump(0x11000,96) dump(0x11080,96)
+  local P=rw(0x1F834)
+  out:write(string.pack("<I4I2I2I2I2I2",seeds[i],rw(0x1F830),rw(0x1F832),rw(0x1F836),rw(0x1F83E),P))
+  dump(0x4000,P*64) dump(0x4C00,P*64) dump(0x5800,P*64) dump(0x6400,P*64) dump(0x1F000,96) dump(0x1F080,96)
 end, emu.callbackType.exec, SYM.h_done)
 emu.addEventCallback(function() end, emu.eventType.endFrame)

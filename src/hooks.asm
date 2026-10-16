@@ -21,9 +21,9 @@
 hook_streams:                   ; stack holds the caller's DBR (PHB at BF46), restored by PLB at 00:C0F1
     rep #$30
     jsr rando_generate
-    lda.l $7F0830               ; ENV -> track id (all per-track tables of the game keep working)
+    lda.l $7FF830               ; ENV -> track id (all per-track tables of the game keep working)
     sta.l $001F06
-    lda.l $7F0832               ; LEN pieces -> track length in position units
+    lda.l $7FF832               ; LEN pieces -> track length in position units
     xba
     asl a
     asl a
@@ -32,13 +32,13 @@ hook_streams:                   ; stack holds the caller's DBR (PHB at BF46), re
 
 hook_laps:
     rep #$30
-    lda.l $7F0836
+    lda.l $7FF836
     sta.l $001E56
     jml $00BF43                 ; the RTS of load_track
 
 hook_pit:
     rep #$30
-    lda.l $7F083E
+    lda.l $7FF83E
     bpl hp_clr
     lda #$0004
     tsb $1EF2
@@ -47,7 +47,7 @@ hp_clr:
     lda #$0004
     trb $1EF2
 hp_pos:
-    lda.l $7F083E
+    lda.l $7FF83E
     and #$7FFF
     asl a
     sta $1EF0
