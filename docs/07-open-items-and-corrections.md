@@ -34,3 +34,19 @@
   (`00:BAB9`), map dots, pit-crew DMA and the scenery scanner are sections of it.
 * Menu text entry (`0F:943D`) is a 6-column grid (`A..Z`, then `3`/`4` glyph cells = space/delete, `END`) writing up to 8
   characters to `$68..$6F`; the main menu (`0F:918B`) has 5 entries (players, skill, country, mph/kph, play game).
+
+## Findings while building the randomizer (session 7, docs/10)
+* **Roadside object words**: `type<<9 | side<<8 | lateral/128`, and the **side bit set means LEFT** (the hit code negates the lateral
+  when the bit is set). The pit-entrance trigger (`05:D75E..D7C0`, player 1) fires when an object word `& $FE00 == $7400` is
+  passed while the car is *beyond* the object laterally on its side (e.g. word `$757C`: left, 15872 -> car lateral below
+  about -16000).
+* The object table is read **up to $58 bytes beyond the last lap piece** by `scan_roadside_objects` (`00:E20D`); the original
+  loader expands L+2 pieces (the extra pieces are read past the end of the streams). Garbage there means group-object
+  loops of up to 65536 iterations.
+* **Bank 7F is partly used**: the corridor table (`$7E7000 + 2*(position/2)`) runs on into `7F:0000..$2800`.
+* The big gold menu font has no glyphs for `0` and `5..9` (digits `1`,`2` exist, `3`/`4` are the arrow glyphs); the small font
+  (`draw_string`, 8x8 tiles in the same VRAM area) has all digits. `0F:9E1C` "upload_font" only clears VRAM $0000-$0FFF.
+* Group objects (word bit 15: tunnels, gantry) come from record bytes `b0..b3` with bit 6 set; only tracks 4, 20, 23, 29 have
+  them (besides the start gantry `$8002`).
+* Menu page tables `0D:C716/C738/C75A` (a, b, c lists per page) hold 17 pages; page 8 is the PASSWORD grid, page 3 the name grid,
+  page 15 the location splash. `$0F:ABE9` is the splash text list, `0D:C6D6/C6F6[track]` laps/pieces for the splash statistics.
