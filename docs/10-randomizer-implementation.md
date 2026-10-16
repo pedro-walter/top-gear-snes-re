@@ -26,7 +26,7 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   points table so the results/ranking show only this race), `0F:8487` (results -> back to the main menu, title skipped once),
   menu entry 2 `COUNTRY` -> `SEED`.
 * **Seed UI**: main menu shows `SEED xxxxxxxx`; Left/Right on that row rolls a new seed; A opens the keypad
-  (`src/keypad.asm`, page 8 of the menus reused): **big gold glyphs**, a 6x3 grid `0 1 2 3 4 5 / 6 7 8 9 b A.. ` see below, typed code in the
+  (`src/keypad.asm`, page 8 of the menus reused): **big gold glyphs**, a 6x3 grid, typed code in the
   box in the big font, selection bar = the game's own sprite pill, cursor wraps inside the 18 cells (no blank cell can be
   highlighted). Keys: A = press, B/Y/X/Select = delete, START or the `END` key = accept; the `<-` key deletes. Typing nothing and
   accepting = roll a new random seed. The seed persists after the race (replay). The splash screen shows `SEED xxxxxxxx`,
