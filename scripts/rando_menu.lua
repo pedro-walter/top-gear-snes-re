@@ -30,9 +30,7 @@ end
 SHOT_KEYPAD=f
 f=f+30
 -- go to END (row 4, col 4): down to row 4 then right
-while cur_r<4 do key("down") cur_r=cur_r+1 end
-while cur_c<4 do key("right") cur_c=cur_c+1 end
-key("a") f=f+200
+key("start") f=f+200
 SHOT_MENU=f
 key("down") key("down") key("down") key("down") key("a")   -- main menu restarts at entry 0: PLAY GAME = 4 downs
 

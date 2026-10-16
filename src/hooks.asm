@@ -179,37 +179,12 @@ t_seedmenu: jml seed_menu       ; target of the patched "JMP country_menu"
 .org $0FA6CD
     .db "SEED   "               ; label "COUNTRY" of main menu entry 2
 .org $0FA725
-    .dw $000B                   ; $A721[2]: highlight bar length of entry 2 (was 8)
+    .dw $0009                   ; $A721[2]: highlight bar length of entry 2 (was 8): ends right after the seed digits
 
 ; ---- hex keypad: the password page (8) is reused (passwords do not exist any more) --------------------------
 .org $0FA9E0
     .db $08,$03,"SEED    ",0
-    .db $05,$0B,"           ",0
-    .db $05,$0D,"           ",0
-    .db $05,$0F,"           ",0
-    .db $05,$11,"           ",0
-    .db $05,$13,"    3 4 END",0
-
-; the big gold font has no digits: the keypad digits are drawn with the small font (draw_string)
-.org $0FFB80
-keypad_list:
-    .db $05,$0B,"0   1   2   3   4   5",0
-    .db $05,$0D,"6   7   8   9   A   B",0
-    .db $05,$0F,"C   D   E   F",0
-    .dw 0
-
-.org $0F95AC                    ; text_entry_redraw (JSR'd by text_entry)
-    jml hook_redraw
-
-.org $0F956F                    ; text_entry: cell -> character
-    jml hook_hexchar
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
+    .db 0,0                     ; end of list (the original password grid strings are not drawn: src/keypad.asm draws the keys)
 
 ; ---- splash (location) screen ------------------------------------------------------------------------------
 .org $0FABE9
@@ -394,33 +369,6 @@ hook_blankmap:                  ; the decompressed minimap bitmaps (7E2000..) be
     rep #$30
     rtl
 
-hook_hexchar:                   ; Y = row*2, $60 = column; returns through 0F:957F with A = character
-    lda $95A2,y
-    clc
-    adc $60
-    pha
-    lda.l SFLAG
-    beq hh_orig
-    pla
-    cmp #30
-    bcs hh_none
-    tax
-    lda.l hex_table,x
-    and #$00FF
-    beq hh_none
-    sta $60
-    jml $0F957F
-hh_none:
-    lda $48                     ; nothing typed: replicate the stack state of the "buffer full" exit (0F:9588)
-    pha
-    jml $0F959C
-hh_orig:
-    pla
-    clc
-    adc #$0041
-    sta $60
-    jml $0F957F
-
 hook_afterresults:              ; results screen finished: straight back to the main menu (title skipped once)
     rep #$30
     lda #$0001
@@ -461,54 +409,14 @@ ht_orig:
     jsl t_cleartext
     jml $0F8C9A
 
-hook_redraw:                    ; text_entry_redraw: typed characters in the small font while the seed keypad is active
-    lda.l SFLAG
-    beq hr_orig
-    ldx #$0066
-    jsl t_dstr
-    jsl t_9dfc
-    jml $0F95B5
-hr_orig:
-    ldx #$0066
-    jsl t_dsb
-    jsl t_9dfc
-    jml $0F95B5
-
-seed_menu:                      ; entry 2 of the main menu, A pressed
+seed_menu:                      ; entry 2 of the main menu, A pressed: hex keypad (src/keypad.asm)
     rep #$30
     jsl t_fadeout
     jsl t_font
     stz $5A
     lda #$0008
     jsl t_page
-    ldx #keypad_list
-    jsl t_dstr
-    lda #$2020
-    sta $68
-    sta $6A
-    sta $6C
-    sta $6E
-    lda #$0708
-    sta $66
-    ldx #$0066
-    stz $5E
-    jsl t_dsb
-    lda $AA33
-    sta $48
-    lda #$0002
-    sta $4A
-    ldx #$0008
-    jsl t_bar
-    jsl t_cur
-    jsl t_oam
-    lda #$0084
-    sta $0424
-    jsl t_fadein
-    lda #$0001
-    sta.l SFLAG
-    jsl t_text
-    lda #$0000
-    sta.l SFLAG
+    jsl kp_run                  ; builds the screen, fades in, returns when END / START was pressed
     jsl t_fadeout
     jsl t_font
     jsr parse_seed

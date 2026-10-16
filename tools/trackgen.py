@@ -44,6 +44,7 @@ SL_BUMPS = [2, 14, 13, 10]               # one-piece bumps 50, 300, 750(13), 750
 CU_LEVELS = [(2, 4, 3), (6, 8, 7), (10, 12, 11)]
 CU_BUMPS = [[1, 17, 18, 19, 20], [5, 21, 22, 23, 24], [9, 25, 26, 27, 28], [13, 29, 30, 31, 32]]
 # pit styles observed in the original ROM: (scenery template, side bit, object group of 1st half)
+SIGN_TYPES = (8, 9, 13)                  # right chevron, left chevron, pit flag
 PIT_STYLES = [(20, 0, 41), (20, 1, 47), (20, 1, 45)]
 
 def neg(i): return (256 - i) & 0xFF if i else 0
@@ -115,6 +116,9 @@ def source(env):
     n = d['nelem'] + 1
     sc = [B(0xC, d['scen'] + k) for k in range(n)]
     recs = [[B(0xC, d['objs'] + 5 * r + i) for i in range(5)] for r in range(2 * n)]
+    for rc in recs:                                      # turn signs (8, 9) and pit signs (13) are generated, never copied
+        for i in range(4):
+            if rc[i] in SIGN_TYPES: rc[i] = 0
     pw = W(0, 0xDF24 + 2 * env)
     bad = set()
     if pw != 0xFFFF:
@@ -160,6 +164,8 @@ def generate(seed):
     st, side, grp = PIT_STYLES[r.rnd(len(PIT_STYLES))]
     scen[pp] = st
     recs[2 * pp] = [21, 58, 0, 0, grp]; recs[2 * pp + 1] = [21, 58, 0, 0, grp + 1]
+    for q in (pp - 2, pp - 1):                           # pit flags on the two pieces before the pit (like the original tracks)
+        recs[2 * q] = [0, 13, 0, 0, 0x1A if side else 0x18]; recs[2 * q + 1] = list(recs[2 * q])
     pit = (side << 15) | ((pp * 1024 - 512) // 2)
     return dict(seed=seed, env=env, L=L, P=P, laps=laps, hill=hill, curvy=curvy, slope=slope, curve=curve,
                 scen=scen, recs=recs, pit=pit, pitpiece=pp, pitstyle=(st, side, grp))
@@ -201,9 +207,27 @@ def expand_objs(recs, diff):
             else: words.append(d_ | low)
     return words
 
+def add_chevrons(t, curve, objs):
+    """Turn signs: 5 chevrons (every 4 slots, the last one 4 slots before the curve) ahead of every curve onset.
+    Type 9 ('<', right side of the road) before a positive curve, type 8 ('>', left side) before a negative one."""
+    L, pp = t['L'], t['pitpiece']
+    for i in range(24, L * 32):
+        a, b = s16(curve[i - 1]), s16(curve[i])
+        if abs(b) >= 8 and (abs(a) < 8 or (a < 0) != (b < 0)):
+            typ, side = (9, 0) if b > 0 else (8, 1)
+            for k in range(1, 6):
+                j = i - 4 * k
+                if pp - 2 <= j // 32 <= pp: continue
+                w = objs[j]
+                if w & 0x8000 or (w & 0xFE00) == 0x7400: continue
+                objs[j] = (typ << 9) | (side << 8) | 0x7C
+    for i in range(64):                                  # pieces L, L+1 are copies of 0, 1
+        objs[L * 32 + i] = objs[i]
+
 def tables(t, diff=1):
-    return dict(slope=expand_slope(t['slope']), curve=expand_curve(t['curve']), scen=expand_scen(t['scen']),
-                objs=expand_objs(t['recs'], diff))
+    curve = expand_curve(t['curve']); objs = expand_objs(t['recs'], diff)
+    add_chevrons(t, curve, objs)
+    return dict(slope=expand_slope(t['slope']), curve=curve, scen=expand_scen(t['scen']), objs=objs)
 
 # ---------------------------------------------------------------- validation ---------------------------------
 def validate(t):

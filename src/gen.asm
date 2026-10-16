@@ -765,6 +765,20 @@ copy10:                         ; X = source offset (bank 0C) of a 5-byte record
 c10:
     lda.l $0C0000,x
     and #$00FF
+    sta T5
+    lda CNT2
+    cmp #2                      ; C = 1 for b0..b3 (object types), 0 for the template byte b4
+    lda T5
+    bcc c10_s
+    cmp #8                      ; turn signs (8, 9) and pit signs (13) are generated, never copied
+    beq c10_z
+    cmp #9
+    beq c10_z
+    cmp #13
+    bne c10_s
+c10_z:
+    lda #0
+c10_s:
     sta $0000,y
     inx
     iny
@@ -824,6 +838,36 @@ pit_setup:
     lda T2
     inc a
     sta $0012,y
+    ; pit flags (object type 13) on the two pieces before the pit: 4 records, template $18 (right, lateral 124) / $1A (left pit)
+    lda T1
+    beq pf_r
+    lda #$1A
+    bra pf_s
+pf_r:
+    lda #$18
+pf_s:
+    sta T4
+    lda PP
+    dec a
+    dec a
+    jsr rec_dest
+    tay
+    ldx #4
+pf_l:
+    lda #0
+    sta $0000,y
+    sta $0004,y
+    sta $0006,y
+    lda #13
+    sta $0002,y
+    lda T4
+    sta $0008,y
+    tya
+    clc
+    adc #10
+    tay
+    dex
+    bne pf_l
     ; pit word = side<<15 | (PP*512 - 256)
     lda PP
     xba
@@ -1054,6 +1098,113 @@ xo_st:
     inc PIDX
     jmp xo_r
 
+add_chevrons:                   ; turn signs: 5 chevrons every 4 slots ahead of each curve onset (see tools/trackgen.py)
+    lda LEN
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta LIM                     ; L*32 slots per lap
+    lda #24
+    sta T0                      ; slot i
+ac_i:
+    lda T0
+    cmp LIM
+    bcc ac_go
+    jmp ac_done
+ac_go:
+    asl a
+    tax
+    lda.l $7E4C00,x             ; b = curve[i]
+    sta T1
+    lda.l $7E4BFE,x             ; a = curve[i-1]
+    sta T2
+    lda T1
+    bpl ac_bp
+    eor #$FFFF
+    inc a
+ac_bp:
+    cmp #8
+    bcc ac_next
+    lda T2
+    bpl ac_ap
+    eor #$FFFF
+    inc a
+ac_ap:
+    cmp #8
+    bcc ac_onset
+    lda T1
+    eor T2
+    bpl ac_next                 ; same direction: not an onset
+ac_onset:
+    lda T1
+    bmi ac_neg
+    lda #$127C                  ; type 9 ('<'), right side, lateral 124
+    bra ac_w
+ac_neg:
+    lda #$117C                  ; type 8 ('>'), left side
+ac_w:
+    sta T3
+    lda #5
+    sta T4
+    lda T0
+    sec
+    sbc #4
+    sta T5                      ; slot j = i-4k
+ac_kl:
+    lda T5
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a                       ; piece of slot j
+    sec
+    sbc PP
+    clc
+    adc #2
+    cmp #3
+    bcc ac_skip                 ; pieces PP-2..PP keep their own objects (pit flags, pit lane)
+    lda T5
+    asl a
+    tax
+    lda.l $7E6400,x
+    bmi ac_skip                 ; group objects
+    and #$FE00
+    cmp #$7400
+    beq ac_skip                 ; pit entrance
+    lda T3
+    sta.l $7E6400,x
+ac_skip:
+    lda T5
+    sec
+    sbc #4
+    sta T5
+    dec T4
+    bne ac_kl
+ac_next:
+    inc T0
+    jmp ac_i
+ac_done:                        ; pieces L, L+1 are copies of 0, 1
+    lda #$6400
+    sta $1A
+    lda #$007E
+    sta $1C
+    lda LIM
+    asl a
+    tay
+    ldx #0
+ac_c:
+    lda.l $7E6400,x
+    sta [$1A],y
+    inx
+    inx
+    iny
+    iny
+    cpx #128
+    bne ac_c
+    rts
+
 expand_all:
     lda #$4000
     sta $1A
@@ -1073,6 +1224,7 @@ expand_all:
     jsr expand_stream
     jsr expand_scen
     jsr expand_objs
+    jsr add_chevrons
     rts
 
 ; ---------------------------------------------------------------------------------------------------------
