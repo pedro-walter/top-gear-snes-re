@@ -24,6 +24,7 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 6. [Track names, passwords, minimaps, day/night](docs/06-names-minimap-daynight.md)
 7. [Open items and corrections](docs/07-open-items-and-corrections.md)
 8. [Accelerator + brake cornering trick (P1 only)](docs/08-brake-cornering-trick.md)
+9. [Randomizer plan (draft)](docs/09-randomizer-plan.md)
 
 ## Tools (`tools/`, Python 3, run from the repo root with `python3 -I`)
 | tool | purpose |
@@ -34,8 +35,23 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 | `physics.py` | exact model of the speed/gear/nitro physics |
 | `names.py` | track and country names |
 
-`disasm/names.txt` has hand-verified labels. The generated disassembly (`disasm/top_gear.asm`) and
-all dumps in `out/` are derived from the ROM and are not committed; `make disasm` regenerates them.
+## Resuming the work: the annotated disassembly
+`make disasm` builds `disasm/top_gear.asm` (needs your ROM, `out/trace_main.txt` and `out/wram_3300.bin`, produced by
+`tools/mesen.sh scripts/trace.lua` and `scripts/dumpram.lua`). It is **generated and not committed** (it contains
+the game's code). All hand-written knowledge lives in `disasm/annot/`:
+
+| file | content |
+|---|---|
+| `symbols.txt` | routine names and doc blocks (`@BBAAAA name`, `;; text`) - shown as headers with callers and read/write/call lists |
+| `ram.txt` | WRAM/direct-page variable names and meanings (shown on every operand) |
+| `hwregs.txt` | PPU/CPU/DMA registers; immediate values stored to key registers are decoded |
+| `comments.txt` | per-address inline comments (`BBAAAA text`) |
+| `regions.txt` | typed data regions (tables) and bank descriptions |
+
+Routines marked `(not yet analysed)` in the output still need reading; add their name/doc to `symbols.txt`
+and rerun `make disasm`. `disasm/names.txt` is the older label list (still honoured).
+Main game flow: `reset_vec` -> `main_restart` -> `load_track` -> `race_loop`; menus are `menu_entry` (0F:806D) called with
+JSL from bank 00; the per-frame renderer runs inside the IRQ (`irq_handler_race` -> `vblank_main_work`).
 
 ## Emulator scripts (`scripts/`)
 Lua scripts for [Mesen2](https://github.com/SourMesen/Mesen2/releases) (tested with 2.1.1) run headless via
