@@ -61,3 +61,19 @@ in a poked-gear test (`scripts/brake_eq.lua`, flat road) the accelerate+brake sp
 ## Reproduce
 `tools/mesen.sh scripts/brake_corner.lua` (writes `out/brake_corner.txt`), `scripts/brake_probe.lua` (button masks and tables), `scripts/brake_eq.lua`.
 Masks: `$1F76`=0x0040 X accelerate, `$1F78`=0x4000 Y brake, `$1F7A/7C/7E` R/L/A (gear up/down/nitro), `$1F80`=0x0200 Left, `$1F82`=0x0100 Right.
+
+## Downhill makes it easier (user observation, Loch Ness)
+Slope only enters the speed update (`05:D400`: `speed += -slope/16`, uphill divided by 4), never the steering limit or the push. The brake bleeds speed every tick, so a downhill
+corner supplies speed back and the car stays above/near the speed you need while you hold the trick (and the corner is held for as long as you like).
+Test (`scripts/brake_slope.lua`, track 30 Loch Ness, car parked at progress 15040 where the curve stream is c=+32 and the slope is -600, i.e. +37 speed/tick; speed forced to 9000, 240 frames, steering held into the corner):
+
+| case | speed over 240 frames (every 30 frames) |
+|---|---|
+| downhill, gear 3, accelerate only | 5417 → 8674 (still climbing) |
+| downhill, gear 3, accelerate + brake | 8572 8553 8537 8519 8588 8593 8563 8545 (**held**, outward push negative = corner held) |
+| flat (c=40 place), gear 3, accelerate + brake | 8585 → 7732 (falling ~30/30 frames) |
+| flat, gears 4/5, accelerate + brake | collapse to ~0-1600 |
+| downhill, gears 4/5, accelerate + brake | hold 9100-9400 for ~90 frames, then fall (not explained; may be a roadside-object hit at the parked position) |
+
+Best Loch Ness corner: progress 14528-17184 (stream words 454-537), curve +32 (right-hand/positive push; steer Left to hold), slope -124..-600 (average -536), about 2650 units long. Also 10432-14112 (c=-32, slope -750..0, avg -253).
+(The "flat"/"up" parked positions I picked had slope 0, so there is no real uphill measurement.)
