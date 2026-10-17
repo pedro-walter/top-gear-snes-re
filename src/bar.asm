@@ -1,14 +1,14 @@
 ; ============================================================================================================
 ; Race HUD: lap progress strip in the black bar between the two views (replaces the minimap).
-;   * start line (left) and finish line (right): a BG1 tile (red line with a white border) drawn into the bar's
-;     tilemap row 13 when the HUD is built (00:CBE2); the graphics go to the unused BG1 tiles $A8 (line) / $A9 (black)
-;   * three dots = the game's own marker sprites, with the tile $7F redrawn as a small borderless 4x1 dash (the tiles $7F/$FF are only used
-;     by these markers): player 1 (upper lane, line 104), the leader (middle lane, 106, unless player 1 or 2 leads) and player 2 / the computer
-;     car (lower lane, 108).  x = position on the lap.  The colours are the car's own sprite palette: players 0 / 1 as in the original, the
-;     leader the palette of its car (record word >> 13 & 3), colour 9 of the palette.
-; The original divider (lines 108..115) is kept as it is: the game forces blank on lines 109..114 while it swaps the palette and OAM for the
-; second view (00:BE88..BEF4), nothing can be drawn there.  The strip is BG1 tile row 13, tile rows 0..4 = lines 104..108, made opaque
-; black (it covers the last lines of the first view).
+;   * start line (left) and finish line (right): a BG1 tile (white / red / white, lines 106..108) at columns 3 and 28 of the bar's
+;     tilemap row 13 when the HUD is built (00:CBE2); the graphics go to the unused BG1 tile $A8 ($A9 = spare black)
+;   * three dots = the game's own marker sprites, with the tile $7F redrawn as a small 4x1 dash with black ends (the tiles $7F/$FF are only
+;     used by these markers): player 1 (upper lane, line 106), the leader (middle lane, 107, unless player 1 or 2 leads) and player 2 /
+;     the computer car (lower lane, 108).  x = position on the lap.  The colours are the car's own sprite palette: players 0 / 1 as in the
+;     original, the leader the palette of its car (record word >> 13 & 3), colour 9 of the palette.
+; The original divider (lines 108..115) and the whole first view are untouched: the game forces blank on lines 109..114 while it swaps the
+; palette and OAM for the second view (00:BE88..BEF4), so nothing can be drawn there; the only visible divider lines are 108 and 115.
+; So the strip is drawn over the last three lines of the first view (106..108) and has no background of its own.
 ; ============================================================================================================
 .a16
 .i16
@@ -21,8 +21,8 @@ BX      = $7FF8B8               ; scratch: dot x
 
 BAR_X0  = 24                    ; sprite x of a dot at the start line (line = tile column 3, pixels 24..31)
 BAR_W   = 200                   ; start line -> finish line (tile column 28)
-BAR_Y1  = 103                   ; sprite y of the player 1 lane (art row 0 -> scan line 104)
-BAR_YL  = 105                   ; leader lane (line 106)
+BAR_Y1  = 105                   ; sprite y of the player 1 lane (art row 0 -> scan line 106)
+BAR_YL  = 106                   ; leader lane (line 107)
 BAR_Y2  = 107                   ; player 2 lane (line 108)
 BAR_ATTR = $001FB2              ; the leader's tile | attribute word (unused lap-record RAM in the race)
 
@@ -80,7 +80,7 @@ bar_hb_d:
     sta.l $002116
     ldx #0
 bar_hb_13:
-    lda #$2CA9                  ; solid black tile, the line tile at columns 3 and 28
+    lda #$AC01                  ; the original filler, the line tile at columns 3 and 28
     cpx #3
     beq bar_hb_13s
     cpx #28
@@ -104,14 +104,14 @@ bar_hb_14:
 ; 4bpp tiles: $A8 = start/finish line (colour 1 = white border, 2 = black, 3 = red; pixel columns 2..5, white caps on tile rows
 ; 0 and 4 = the first and last visible scan line), $A9 = solid black (colour 2)
 bar_gfx:
-    .db $3C,$C3, $3C,$DB, $3C,$DB, $3C,$DB, $3C,$C3, $00,$FF, $00,$FF, $00,$FF
+    .db $00,$00, $00,$00, $3C,$00, $3C,$18, $3C,$C3, $00,$FF, $00,$FF, $00,$FF
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
     .db $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
 
-bar_dot:                        ; 4bpp: pixel columns 2..5 of row 0 in colour 9 (planes 0 and 3)
-    .dw $003C,0,0,0,0,0,0,0
-    .dw $3C00,0,0,0,0,0,0,0
+bar_dot:                        ; 4bpp: row 0 = black end pixels (colour 6: planes 1+2) around 4 pixels of colour 9 (planes 0+3)
+    .dw $423C,0,0,0,0,0,0,0
+    .dw $3C42,0,0,0,0,0,0,0
 
 hook_mapdots:
     php

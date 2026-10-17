@@ -56,7 +56,7 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   * Why only a thin strip: the game forces blank on scan lines 109..114 (`INIDISP` $8F at `00:BE88`, restored at `00:BEF4`) while it DMAs the palette
     and OAM for the second view, and the second view starts at line 115, so nothing can be drawn there. The visible part of the "bar" is BG1
     tile row 13 = lines 104..108 (five lines); the strip is made opaque black (it covers the last lines of the first view), so the black bar is
-    lines 104..114. The original divider (lines 108..115, blank on 109..114) is untouched; the strip is BG1 tile row 13 made opaque black (lines 104..108, it covers the last lines of the first view) and the dots are 4x1 dashes in lanes at lines 104 / 106 / 108.
+    lines 104..114. The original divider (lines 108..115, blank on 109..114) and the whole first view are untouched. Nothing can be drawn on 109..114 (forced blank) and the only visible divider lines are 108 and 115, so the strip is drawn over the last three lines of the first view without a background: 4x1 dashes with black ends in lanes at lines 106 / 107 / 108, start/finish lines as a 3-line tile at lines 106..108. Contrast over a grey road is weak.
   * The start/finish lines are one 4bpp BG1 tile (`$A8`, VRAM word `$A80`; `$A9` = solid black) written with the HUD tilemap: the hook at `00:CBE2`
     (forced blank) replaces the row 13 loop and writes rows 13/14 (`$0DA0..$0DDF`) itself. BG1 uses the palette 3 colours 1 (white), 2 (black) and 3 (red)
     that the game already loads. Tiles `$82..$BF` of the BG1 character area (VRAM `$1040..$17FF`) were unused in all tracks tried.
