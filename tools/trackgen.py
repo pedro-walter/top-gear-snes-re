@@ -246,10 +246,11 @@ def expand_objs(recs, diff):
             else: words.append(d_ | low)
     return words
 
-def add_chevrons(t, curve, objs):
+def add_chevrons(t, curve, objs, scen):
     """Turn signs along every curve: one chevron every 4 slots from 20 slots ahead of the curve onset to the end of the curve.
     Type 9 ('<', right side of the road) for a positive curve, type 8 ('>', left side) for a negative one."""
     L, pp = t['L'], t['pitpiece']
+    sw = (W(0, 0xDEE4 + 2 * t['env']) & 0x71FF) | t['roadw']          # road style word, as hook_style builds it
     i = 24
     while i < L * 32:
         a, b = s16(curve[i - 1]), s16(curve[i])
@@ -263,7 +264,9 @@ def add_chevrons(t, curve, objs):
                 pc = j // 32
                 w = objs[j]
                 if not (j < 48 or j >= L * 32 - 48 or pp - 2 <= pc <= pp or pc == L - 1 or w & 0x8000 or (w & 0xFE00) == 0x7400):
-                    objs[j] = (typ << 9) | (side << 8) | 0x7C
+                    st_ = (sw >> (3 * (W(0, 0x9B3F + (scen[j] & 0x7FFE)) >> 2))) & 7
+                    edge = abs(s16(W(0, 0xC592 + 4 * st_ + (0 if side else 2))))
+                    objs[j] = (typ << 9) | (side << 8) | min(255, edge + 44)   # always 44 units outside the drawn road edge
                 j += 4
             i = e + 1
         else:
@@ -273,8 +276,9 @@ def add_chevrons(t, curve, objs):
 
 def tables(t, diff=1):
     curve = expand_curve(t['curve']); objs = expand_objs(t['recs'], diff)
-    add_chevrons(t, curve, objs)
-    return dict(slope=expand_slope(t['slope']), curve=curve, scen=expand_scen(t['scen']), objs=objs)
+    scen = expand_scen(t['scen'])
+    add_chevrons(t, curve, objs, scen)
+    return dict(slope=expand_slope(t['slope']), curve=curve, scen=scen, objs=objs)
 
 # ---------------------------------------------------------------- validation ---------------------------------
 def validate(t):

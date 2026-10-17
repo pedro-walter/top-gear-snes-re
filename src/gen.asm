@@ -1280,7 +1280,63 @@ ac_kl:
     and #$FE00
     cmp #$7400
     beq ac_skip                 ; pit entrance
+    lda T5
+    asl a
+    tax
+    lda.l $7E5800,x             ; scenery word -> road type -> road style -> drawn edge; the sign sits 44 units outside it
+    and #$7FFE
+    tax
+    lda.l $009B3F,x             ; 4 * road type
+    lsr a
+    lsr a
+    sta CNT2
+    asl a
+    clc
+    adc CNT2
+    sta CNT2                    ; 3 * road type = shift of the style in the style word
+    lda ENV
+    asl a
+    tax
+    lda.l $00DEE4,x
+    and #$71FF
+    ora.l $7FF87C               ; ROADW
+    ldx CNT2
+    beq ac_s0
+ac_sh:
+    lsr a
+    dex
+    bne ac_sh
+ac_s0:
+    and #7
+    asl a
+    asl a                       ; 4 bytes per style: left edge, right edge
+    tax
     lda T3
+    and #$0100
+    bne ac_lf
+    inx
+    inx
+ac_lf:
+    lda.l $00C592,x
+    bpl ac_ep2
+    eor #$FFFF
+    inc a
+ac_ep2:
+    clc
+    adc #44
+    cmp #256
+    bcc ac_ok
+    lda #255
+ac_ok:
+    sta CNT2
+    lda T3
+    and #$FF00
+    ora CNT2
+    pha
+    lda T5
+    asl a
+    tax
+    pla
     sta.l $7E6400,x
 ac_skip:
     lda T5
