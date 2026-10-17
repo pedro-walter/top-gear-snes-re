@@ -22,9 +22,9 @@ BX      = $7FF8B8               ; scratch: dot x
 
 BAR_X0  = 24                    ; sprite x of a dot at the start line (line = tile column 3, pixels 24..31)
 BAR_W   = 200                   ; start line -> finish line (tile column 28)
-BAR_Y1  = 102                   ; sprite y of the player 1 lane (art rows 0..1 -> scan lines 103..104)
-BAR_YL  = 104                   ; leader lane (105..106)
-BAR_Y2  = 106                   ; player 2 lane (107..108)
+BAR_Y1  = 104                   ; sprite y of the player 1 lane (art rows 0..1 -> scan lines 105..106)
+BAR_YL  = 107                   ; leader lane (108..109)
+BAR_Y2  = 110                   ; player 2 lane (111..112)
 BAR_ATTR = $001FB2              ; the leader's tile | attribute word (unused lap-record RAM in the race)
 
 ; ---- 00:8910 update_map_dots: the three marker words $0112 (p1), $0114 (p2), $0116 (leader) = x | y << 8 -------------
@@ -43,6 +43,12 @@ BAR_ATTR = $001FB2              ; the leader's tile | attribute word (unused lap
     lda #$8080                  ; was LDA $0116
 .org $0185B4
     lda #$8080                  ; was LDA $0112
+
+; ---- the second view's IRQ (and so the forced blank) 4 lines later: the visible black strip is lines 104..112 -----------------------
+.org $00B4E7
+    .db $70                     ; was $6C (VTIME = 108)
+.org $00B505
+    .db $70
 
 ; ---- 00:CBE2 HUD tilemap: bar rows 13/14 (VRAM $0DA0..$0DDF) --------------------------------------------------------
 .org $00CBE2
@@ -65,7 +71,7 @@ bar_hb_t:
     sta.l $002118
     inx
     inx
-    cpx #64
+    cpx #96
     bcc bar_hb_t
     lda #$27F0                  ; sprite tile $7F (table at byte $4000): the dot
     sta.l $002116
@@ -96,6 +102,13 @@ bar_hb_13w:
     ldx #0
 bar_hb_14:
     lda #$2C01
+    cpx #3
+    beq bar_hb_14s
+    cpx #28
+    bne bar_hb_14w
+bar_hb_14s:
+    lda #$2CAA                  ; the last visible line of the start / finish lines
+bar_hb_14w:
     sta.l $002118
     inx
     cpx #32
@@ -105,9 +118,11 @@ bar_hb_14:
 ; 4bpp tiles: $A8 = start/finish line (colour 1 = white border, 2 = black, 3 = red; pixel columns 2..5, white caps on tile rows
 ; 0 and 4 = the first and last visible scan line), $A9 = solid black (colour 2)
 bar_gfx:
-    .db $3C,$C3, $3C,$DB, $3C,$DB, $3C,$DB, $3C,$C3, $00,$FF, $00,$FF, $00,$FF
+    .db $3C,$C3, $3C,$DB, $3C,$DB, $3C,$DB, $3C,$DB, $3C,$DB, $3C,$DB, $3C,$DB
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
     .db $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF
+    .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
+    .db $3C,$C3, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
 
 bar_dot:                        ; 4bpp: pixel columns 2..5 of rows 0 and 1 in colour 9 (planes 0 and 3)
