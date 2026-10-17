@@ -101,7 +101,7 @@ Reading `0F:918B` (main menu), `0F:943D` (text entry), `0F:821D` (location scree
 | seed entry screen | reuse `text_entry` (`0F:943D`) with a **hex keypad**: 16 keys + DEL + END instead of A-Z | grid strings are plain text tables at `0F:A792`.. ; only the cursor wrap/limits and key->char mapping change (the 8-character buffer `$68..$6F` is exactly an 8-digit hex seed) |
 | splash/location screen | `0F:815A` flow, `0F:8A81`, `0F:8ADC` | replace city/country text by `SEED  XXXXXXXX`; STATISTICS shows laps (generated) and distance; skip the minimap upload (`0F:821D/82F0`); keep or drop the lap-record line |
 | championship machinery | `0F:8733`, passwords `0F:93DC` | disabled: no country unlock, no passwords; after a race the same screen returns with the seed (replay) or a new seed |
-| race HUD minimap | tile upload in the loaders + `update_map_dots` | blank the map tiles and park the three marker sprites off-screen; **optional later:** draw a procedural minimap from the curve data (heading integration) |
+| race HUD minimap | tile upload in the loaders + `update_map_dots` | blank the map tiles; the three marker sprites are reused as lap-progress dots in the black bar (docs/10, `src/bar.asm`); **optional later:** draw a procedural minimap from the curve data (heading integration) |
 
 Proposed hex keypad (to be refined with your letter-distribution feedback; the original grid is 6 columns wide with
 `END` and two glyph cells for space/delete):

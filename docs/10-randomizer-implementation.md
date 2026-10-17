@@ -41,8 +41,24 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   5 chevrons (every 4 slots, last one 4 slots before the curve) ahead of every curve onset - type 9 (`<`) on the right before a
   positive curve, type 8 (`>`) on the left before a negative one - and pit flags (type 13, template `$18`/`$1A`) on the two pieces
   before the pit like the original tracks do. Python reference and 65816 code are identical (`add_chevrons`).
-* **No minimap**: the decompressed minimap bitmap is blanked (`0F:8232`), the three HUD marker sprites are never drawn
-  (`00:8966`, `00:8A2C` stay alive because they also derive the pit-scene scroll `$A6`; only their dot positions are parked off screen), the lap-record line is moved off screen.
+* **No minimap, lap-progress strip instead** (`src/bar.asm`): the decompressed minimap bitmap is blanked (`0F:8232`) and the lap-record line is moved
+  off screen. The black bar between the two views now shows the progress of the cars along the lap: a red start line (left, with a white border) and a
+  finish line (right), and three dots - player 1 (red), player 2 / computer car (blue) and the leader (green, hidden while player 1 or 2 leads).
+  x = position on the lap (`$1ED7` / `$1EDA` / `$0219+slot`, scaled by the lap length `$0200` to 200 pixels, 8x8 multiply + 16/8 divide), y = lateral
+  position in three levels (left third / middle / right third of the road).
+  * The dots are the game's own marker sprites (tiles `$7F`, palettes 0/1/5). `update_map_dots` (`00:8910`) is replaced by a JSL to `hook_mapdots`
+    which writes `$0112/$0114/$0116` = x | y << 8; the sprite renderer (`01:808B..80AE`, player 1's buffer) already copies them to the sprites. The
+    leader is found with the game's own loop (highest `$021A` key over the 20 cars) and hidden when it is the slot in `$0204` or `$0206`.
+    Player 2's buffer (`01:8590/85A2/85B4`, y + $70) is parked off screen. **Correction:** the routines `00:8966/8A2C` that the earlier text called the
+    marker writers are not executed in the race (exec count 0); the old parking patches on them did nothing, so the original dots had been drawn
+    over the blank minimap corner. They are left in place for whatever calls them.
+  * Why only a thin strip: the game forces blank on scan lines 109..114 (`INIDISP` $8F at `00:BE88`, restored at `00:BEF4`) while it DMAs the palette
+    and OAM for the second view, and the second view starts at line 115, so nothing can be drawn there. The visible part of the "bar" is BG1
+    tile row 13 = lines 104..108 (five lines); the strip is made opaque black (it covers the last lines of the first view), so the black bar is
+    lines 104..114. A dot is five lines high, hence only three lateral levels.
+  * The start/finish lines are one 4bpp BG1 tile (`$A8`, VRAM word `$A80`; `$A9` = solid black) written with the HUD tilemap: the hook at `00:CBE2`
+    (forced blank) replaces the row 13 loop and writes rows 13/14 (`$0DA0..$0DDF`) itself. BG1 uses the palette 3 colours 1 (white), 2 (black) and 3 (red)
+    that the game already loads. Tiles `$82..$BF` of the BG1 character area (VRAM `$1040..$17FF`) were unused in all tracks tried.
 * Smoke test (`tools/rando_smoke.sh seed...`): 40 random seeds, ~5000 frames each with an autopilot, no stalls
   (race_frames within 6% of real time; the longer tracks are slightly slower). `scripts/rando_pit.lua`: the computer car
   pits on a generated track (state FFFF..0000, fuel refilled to A7FF).
@@ -56,7 +72,7 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
 ## Known limitations / ideas
 
 * Seeds are in plain hex, 8 digits; the keypad types right-aligned (`AB12` = `0000AB12`).
-* No procedural minimap yet (box stays empty). The pit lane needs a scenery template 20 (type 3) piece: verified visually
+* No procedural minimap (replaced by the lap-progress strip above). The pit lane needs a scenery template 20 (type 3) piece: verified visually
   for several environments but not exhaustively.
 * Fuel balance: 8 laps of a 46-piece track need two pit stops; the AI handles that, the player has to use the pit.
 * Pitfall: **Mesen auto-applies `<rom name>.ips`** found next to the ROM. A stale `out/rando.ips` from an earlier build was applied on top

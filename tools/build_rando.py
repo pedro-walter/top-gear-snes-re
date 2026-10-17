@@ -19,7 +19,7 @@ def build(harness=False, root='.'):
     rom = bytearray(open(path, 'rb').read())
     assert len(rom) == 0x80000, 'expected the 512 KB headerless USA ROM'
     rom.extend(bytes(0x80000))
-    names = ['gen.asm', 'hooks.asm', 'keypad.asm'] + (['harness.asm'] if harness else [])
+    names = ['gen.asm', 'hooks.asm', 'keypad.asm', 'bar.asm'] + (['harness.asm'] if harness else [])
     text = ''
     for n in names:
         text += open(os.path.join(root, 'src', n)).read() + '\n'
