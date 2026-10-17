@@ -1,7 +1,7 @@
 ; ============================================================================================================
 ; Race HUD: lap progress strip in the black bar between the two views (replaces the minimap).
 ;   * start line (left) and finish line (right): a BG1 tile (red line with a white border) drawn into the bar's
-;     tilemap row 13 when the HUD is built (00:CBE2); the graphics go to the unused BG1 tiles $A8 (line) / $A9 (black)
+;     tilemap row 13 when the HUD is built (00:CBE2); the graphics go to the unused BG1 tiles $A8 (line) / $A9 (black) / $AA / $AB (last line)
 ;   * three dots = the game's own marker sprites, with the tile $7F redrawn as a small borderless 4x2 block (the tiles $7F/$FF are only used
 ;     by these markers): player 1 (upper lane), the leader (middle lane, unless player 1 or 2 leads) and player 2 / the computer car
 ;     (lower lane).  x = position on the lap.  The colours are the car's own sprite palette: players 0 / 1 as in the original, the leader
@@ -71,7 +71,7 @@ bar_hb_t:
     sta.l $002118
     inx
     inx
-    cpx #96
+    cpx #128
     bcc bar_hb_t
     lda #$27F0                  ; sprite tile $7F (table at byte $4000): the dot
     sta.l $002116
@@ -101,13 +101,13 @@ bar_hb_13w:
     bcc bar_hb_13
     ldx #0
 bar_hb_14:
-    lda #$2C01
+    lda #$2CAB                  ; black on the first and the last line (as in the original the first line after the unblank is black; the lines between belong to the blank)
     cpx #3
     beq bar_hb_14s
     cpx #28
     bne bar_hb_14w
 bar_hb_14s:
-    lda #$2CAA                  ; the last visible line of the start / finish lines
+    lda #$2CAA                  ; the last line of the start / finish lines (white cap, the rest transparent)
 bar_hb_14w:
     sta.l $002118
     inx
@@ -122,7 +122,9 @@ bar_gfx:
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
     .db $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
-    .db $3C,$C3, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF
+    .db $3C,$C3, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$FF
+    .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
+    .db $00,$FF, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$FF
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
 
 bar_dot:                        ; 4bpp: pixel columns 2..5 of rows 0 and 1 in colour 9 (planes 0 and 3)
