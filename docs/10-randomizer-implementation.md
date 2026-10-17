@@ -75,3 +75,10 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   gantry (group `$8002`) disappear in some environments. `tools/gantry_search.py` finds per environment object types to drop from the copied
   source (table `DROP` in trackgen.py / `dropt` in gen.asm). All 32 environments show the gantry (`out/ge_sheet.png`).
 * Seed roll mixes H/V counters and the old seed through 4 rounds of the RNG so every digit changes.
+
+## Roadside scenery fill (review round 3)
+Environments whose original track is sparse got empty roadsides. After the turn signs, `add_chevrons` (both generators) fills every
+8th empty slot (from slot 52, never within 48 slots of the gantry, never at the pit pieces or the last piece) with a tree/bush,
+alternating sides, 60 units outside the drawn road edge. The two types come from a per-environment table (`SCENERY` / `scent`:
+the env's two most common tree/bush types in the original data, minus the env's DROP type). Envs 2, 8, 9, 14 and a few others have none
+(their art for other types is not loaded - tested on env 14: types 15/24/27 draw nothing), so they stay as sparse as the originals.

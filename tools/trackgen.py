@@ -76,6 +76,8 @@ DROP = [[28, 38, 0, 0],
         [30, 0, 0, 0],
         [15, 29, 0, 0],
         [15, 14, 0, 0]]
+# the two most common tree/bush types of each original environment (0 = none: the art of other types is not loaded there)
+SCENERY = [27,27,24,27,0,0,24,15,27,15,27,26,27,14,15,27,0,0,27,27,27,15,15,14,24,56,15,15,0,0,24,27,25,31,27,25,15,14,31,15,27,24,24,57,27,15,27,26,26,56,27,26,15,27,24,27,27,24,27,15,27,25,27,27]
 SIGN_TYPES = (8, 9, 13)                  # right chevron, left chevron, pit flag
 # (scenery template, pit word side bit, object group of the 1st half, flag template far/near, flag record slot (0 = b0, 1 = b1),
 #  road style of type 3, mirror bit of 00:DEE4).  Exactly the combinations of the original tracks: the pit lane is on the left
@@ -271,6 +273,15 @@ def add_chevrons(t, curve, objs, scen):
             i = e + 1
         else:
             i += 1
+    ta, tb = SCENERY[2 * t['env']], SCENERY[2 * t['env'] + 1]
+    if ta:                                               # roadside trees/bushes in the gaps: every 8 slots, alternating sides, 60 units outside the edge
+        for j in range(52, L * 32 - 48, 8):
+            pc = j // 32
+            if objs[j] or pp - 2 <= pc <= pp or pc == L - 1: continue
+            side = (j >> 3) & 1
+            st_ = (sw >> (3 * (W(0, 0x9B3F + (scen[j] & 0x7FFE)) >> 2))) & 7
+            edge = abs(s16(W(0, 0xC592 + 4 * st_ + (0 if side else 2))))
+            objs[j] = ((ta if (j >> 3) % 3 else tb) << 9) | (side << 8) | min(255, edge + 60)
     for i in range(64):                                  # pieces L, L+1 are copies of 0, 1
         objs[L * 32 + i] = objs[i]
 

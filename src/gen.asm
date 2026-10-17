@@ -1167,6 +1167,47 @@ xo_st:
     inc PIDX
     jmp xo_r
 
+edge_get:                       ; A = signed drawn road edge for slot T5 on the side of T3 (bit 8 set = left)
+    lda T5
+    asl a
+    tax
+    lda.l $7E5800,x             ; scenery word -> road type -> road style -> drawn edge; the sign sits 44 units outside it
+    and #$7FFE
+    tax
+    lda.l $009B3F,x             ; 4 * road type
+    lsr a
+    lsr a
+    sta CNT2
+    asl a
+    clc
+    adc CNT2
+    sta CNT2                    ; 3 * road type = shift of the style in the style word
+    lda ENV
+    asl a
+    tax
+    lda.l $00DEE4,x
+    and #$71FF
+    ora.l $7FF87C               ; ROADW
+    ldx CNT2
+    beq ac_s0
+ac_sh:
+    lsr a
+    dex
+    bne ac_sh
+ac_s0:
+    and #7
+    asl a
+    asl a                       ; 4 bytes per style: left edge, right edge
+    tax
+    lda T3
+    and #$0100
+    bne ac_lf
+    inx
+    inx
+ac_lf:
+    lda.l $00C592,x
+    rts
+
 add_chevrons:                   ; turn signs: one chevron every 4 slots from 20 slots before a curve onset to the end of the curve
     lda LEN
     asl a
@@ -1280,44 +1321,7 @@ ac_kl:
     and #$FE00
     cmp #$7400
     beq ac_skip                 ; pit entrance
-    lda T5
-    asl a
-    tax
-    lda.l $7E5800,x             ; scenery word -> road type -> road style -> drawn edge; the sign sits 44 units outside it
-    and #$7FFE
-    tax
-    lda.l $009B3F,x             ; 4 * road type
-    lsr a
-    lsr a
-    sta CNT2
-    asl a
-    clc
-    adc CNT2
-    sta CNT2                    ; 3 * road type = shift of the style in the style word
-    lda ENV
-    asl a
-    tax
-    lda.l $00DEE4,x
-    and #$71FF
-    ora.l $7FF87C               ; ROADW
-    ldx CNT2
-    beq ac_s0
-ac_sh:
-    lsr a
-    dex
-    bne ac_sh
-ac_s0:
-    and #7
-    asl a
-    asl a                       ; 4 bytes per style: left edge, right edge
-    tax
-    lda T3
-    and #$0100
-    bne ac_lf
-    inx
-    inx
-ac_lf:
-    lda.l $00C592,x
+    jsr edge_get
     bpl ac_ep2
     eor #$FFFF
     inc a
@@ -1352,7 +1356,98 @@ ac_fin:
 ac_next:
     inc T0
     jmp ac_i
-ac_done:                        ; pieces L, L+1 are copies of 0, 1
+ac_done:                        ; roadside trees/bushes in the gaps: every 8 slots from 52, alternating sides, 60 units outside the edge
+    lda ENV
+    asl a
+    tax
+    lda.l scent,x
+    and #$00FF
+    beq ac_copy
+    sta T1                      ; type A (2 of 3 slots)
+    lda.l scent,x
+    xba
+    and #$00FF
+    sta T2                      ; type B (every third slot)
+    stz T0                      ; (j >> 3) mod 3, j = 52 -> 6 mod 3 = 0
+    lda #52
+    sta T5
+as_l:
+    lda LIM
+    sec
+    sbc #48
+    cmp T5
+    bcc ac_copy
+    beq ac_copy
+    lda T5
+    asl a
+    tax
+    lda.l $7E6400,x
+    bne as_next
+    lda T5
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta T6                      ; piece of slot j
+    sec
+    sbc PP
+    clc
+    adc #2
+    cmp #3
+    bcc as_next                 ; pit pieces keep their own objects
+    lda T6
+    inc a
+    cmp LEN
+    beq as_next                 ; the last piece stays empty
+    lda T5
+    and #$0008
+    beq as_s0
+    lda #$0100
+as_s0:
+    sta T3                      ; side bit (1 = left)
+    lda T0
+    beq as_tb
+    lda T1
+    bra as_ty
+as_tb:
+    lda T2
+as_ty:
+    xba
+    asl a                       ; type << 9
+    ora T3
+    sta T4
+    jsr edge_get
+    bpl as_ep
+    eor #$FFFF
+    inc a
+as_ep:
+    clc
+    adc #60
+    cmp #256
+    bcc as_ok
+    lda #255
+as_ok:
+    ora T4
+    pha
+    lda T5
+    asl a
+    tax
+    pla
+    sta.l $7E6400,x
+as_next:
+    inc T0
+    lda T0
+    cmp #3
+    bcc as_t
+    stz T0
+as_t:
+    lda T5
+    clc
+    adc #8
+    sta T5
+    bra as_l
+ac_copy:                        ; pieces L, L+1 are copies of 0, 1
     lda #$6400
     sta $1A
     lda #$007E
@@ -1480,5 +1575,6 @@ slope_levels:   .db 1,4,3, 5,7,6, 15,17,16, 18,20,19, 21,23,22, 9,12,11, 24,26,2
 slope_bumps:    .db 2,14,13,10
 curve_levels:   .db 2,4,3, 6,8,7, 10,12,11
 curve_bumps:    .db 1,17,18,19,20, 5,21,22,23,24, 9,25,26,27,28, 13,29,30,31,32
+scent:          .db 27,27,24,27,0,0,24,15,27,15,27,26,27,14,15,27,0,0,27,27,27,15,15,14,24,56,15,15,0,0,24,27,25,31,27,25,15,14,31,15,27,24,24,57,27,15,27,26,26,56,27,26,15,27,24,27,27,24,27,15,27,25,27,27
 dropt:          .db 28,38,0,0, 15,0,0,0, 11,12,42,0, 11,41,0,0, 14,0,0,0, 24,0,0,0, 15,28,0,0, 24,0,0,0, 55,0,0,0, 54,55,15,0, 43,0,0,0, 0,0,0,0, 27,0,0,0, 10,0,0,0, 31,0,0,0, 11,12,26,0, 27,0,0,0, 31,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 27,7,0,0, 0,0,0,0, 0,0,0,0, 27,0,0,0, 24,0,0,0, 0,0,0,0, 25,0,0,0, 14,0,0,0, 30,0,0,0, 15,29,0,0, 15,14,0,0
 pit_styles:     .db 20,0,41,24,24,0,1,0, 20,1,45,26,26,0,4,0, 20,1,47,24,26,1,5,1
