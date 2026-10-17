@@ -58,7 +58,7 @@ DROP = [[28, 38, 0, 0],
         [0, 0, 0, 0],
         [27, 0, 0, 0],
         [10, 0, 0, 0],
-        [31, 0, 0, 0],
+        [0, 0, 0, 0],                   # env 14: type 31 (its trees) only dropped near the gantry, see DROPW
         [11, 12, 26, 0],
         [27, 0, 0, 0],
         [31, 0, 0, 0],
@@ -77,7 +77,9 @@ DROP = [[28, 38, 0, 0],
         [15, 29, 0, 0],
         [15, 14, 0, 0]]
 # the two most common tree/bush types of each original environment (0 = none: the art of other types is not loaded there)
-SCENERY = [27,27,24,27,0,0,24,15,27,15,27,26,27,14,15,27,0,0,27,27,27,15,15,14,24,56,15,15,0,0,24,27,25,31,27,25,15,14,31,15,27,24,24,57,27,15,27,26,26,56,27,26,15,27,24,27,27,24,27,15,27,25,27,27]
+SCENERY = [27,27,24,27,0,0,24,15,27,15,27,26,27,14,15,27,0,0,27,27,27,15,15,14,24,56,15,15,31,31,24,27,25,31,27,25,15,14,31,15,27,24,24,57,27,15,27,26,26,56,27,26,15,27,24,27,27,24,27,15,27,25,27,27]
+DROPW = {14: 31}                          # types removed only within WIN slots of the gantry (Black Forest keeps its trees elsewhere)
+WIN = 64
 SIGN_TYPES = (8, 9, 13)                  # right chevron, left chevron, pit flag
 # (scenery template, pit word side bit, object group of the 1st half, flag template far/near, flag record slot (0 = b0, 1 = b1),
 #  road style of type 3, mirror bit of 00:DEE4).  Exactly the combinations of the original tracks: the pit lane is on the left
@@ -230,7 +232,7 @@ def expand_scen(b):
         out += [W(0xC, src + 2 * i) for i in range(32)]
     return out
 def expand_objs(recs, diff):
-    mask = W(0xC, 0x8541 + diff) & 0xE000
+    mask = 0xE000                                        # every difficulty's objects: the seed decides, not the difficulty
     words = []
     for rc in recs:
         w0 = rc[0] | rc[1] << 8; w1 = rc[2] | rc[3] << 8; w2 = rc[3] | rc[4] << 8
@@ -282,6 +284,10 @@ def add_chevrons(t, curve, objs, scen):
             st_ = (sw >> (3 * (W(0, 0x9B3F + (scen[j] & 0x7FFE)) >> 2))) & 7
             edge = abs(s16(W(0, 0xC592 + 4 * st_ + (0 if side else 2))))
             objs[j] = ((ta if (j >> 3) % 3 else tb) << 9) | (side << 8) | min(255, edge + 60)
+    if t['env'] in DROPW:
+        for j in list(range(WIN)) + list(range(L * 32 - WIN, L * 32)):
+            w = objs[j]
+            if w and not w & 0x8000 and (w >> 9) & 63 == DROPW[t['env']]: objs[j] = 0
     for i in range(64):                                  # pieces L, L+1 are copies of 0, 1
         objs[L * 32 + i] = objs[i]
 
