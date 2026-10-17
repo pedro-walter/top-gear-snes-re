@@ -44,8 +44,7 @@ Example: SPD 5359 -> 5359*24/1024 = 125 (the user saw 124).
 * Bot lateral speed = +-(100 + rand(0..255)), random sign: they sweep left-right across the road at constant lateral speed and bounce on the road edges.
   That is the "weaving" – bots never look at the player.
 * RNG: `00:A89E` – LCG on `$1FF4`: `seed = 13*(seed+7)`, returns `hi ^ lo` byte (optionally scaled by A+1 via the PPU multiplier). Same seed => same race.
-* A bot bumping into a human car: 00:A2C4. If lateral distance < 0x800 and the bot was just overtaken/overtaking: P1 -> `sub_00A30C` halves the player's speed (`LSR $1E5A`) and
-  sets `$1EF5 |= 0x80` (sound), P2 -> `sub_00A372` same for `$1E5C`/`$1EF6`.
+* A bot reaching a human car from behind: 00:A2C4 -> `bump_p1`/`bump_p2`. This is a **speed swap, not a halving** (the `LSR $1E5A` is a unit conversion: `$1E5A` is 2x the bot speed unit). See "Collisions" below.
 * The human car is also *blocked* by a car ahead: `05:E9AF` (P1) / `05:F174..` (P2) shrink the allowed lateral corridor `[$1A,$1C]` around any car within 0x200 units ahead
   (corridor limits come from `$7E7002[pos>>4]`), pushing you aside instead of letting you drive through.
 
@@ -78,3 +77,27 @@ strictly ahead in (lap, list order). Because the list is sorted by progress this
 * **Consequences**: the seed is never reset between races. The first race after a cold boot (no demo before it) always has the same bot jitter/lateral speeds/weave directions. Race n+1 starts from the seed left by race n, so it depends on the number of bump-sound draws, i.e. on how the player drove. Waiting on the title until the demo runs reseeds from the frame counter and makes the next race timing-dependent.
 * **Grid reset** (not the RNG): `0F:84CB` / `0F:84E1` set the previous finishing position to 0/1 (back of the grid) when the human finished outside the qualifying places (`qualify_check_1p`) or after `advance_track` signals the end of the championship (read from the code, not traced in the GUI).
 * The randomizer does not touch `$1FF4` (its seed generator is separate), so the same behaviour applies to it. Idea, not done: seed `$1FF4` from the track seed for replayable bot fields.
+
+
+## Collisions (measured with `scripts/collide_hooks.lua`, `collide_probe.lua`, `collide_exp.lua`)
+Speed units: `$1E5A` (player) is **2x** the bot speed unit (player advances `$1E5A/2*delta`, a bot `speed*delta`). Nothing below damages the car; every contact is a speed change, a sound flag (`$1EF5 |= 0x80`) and sometimes a sideways kick.
+There is **no sideways car-to-car contact**: both car tests fire only on the tick where one car's progress reaches the other's, and only if the lateral gap is small enough.
+
+| Event | Where | Condition | Effect |
+|---|---|---|---|
+| Player reaches a bot ahead | `05:E3D6..E584` -> `sub_05E8E9` | player pos + 7 >= bot's projected pos; player faster (`2*bot < $1E5A`); lateral gap < 0x800 in half units = **4096** units | **speed swap**: player gets `2*bot_speed` (pending ramp not included), bot jumps to ~player/2 (rounded to 64) then eases back to its old speed at `-delta/64` per tick for 64 ticks. Player pos set to bot pos - 8, crash sound. **No lateral kick, no steering lockout.** Measured: 5925 vs bot 2001 -> 4002. |
+| Bot reaches the player from behind | `00:A2C4` -> `bump_p1` | bot progress >= player's; lateral gap < 0x800 in full units = **2048** (half the window above); not in the pit, player speed not negative | **swap the other way**: player gets `2*bot_speed` (a *boost* if the player was slower), bot gets player/2 (rounded) and eases back over 64 ticks; bot placed at the player's position. Measured: player 2023 -> 7538, bot 3769 -> 953 then +44 per tick. The speed then bleeds off through normal drag, it is not clamped to the gear's top speed. |
+| Player vs computer car / human 2 | `05:E524..E569`, `E703..E763` | same tests | same swap plus a lateral shove `steer = -8 * lateral gap` |
+| Roadside object, class **REV** | `05:F6B3` | object word lateral vs player lateral, see thresholds | `speed = -min(speed/2, 1600)` (i.e. reverse, at most -37 km/h), forward distance 0, crash sound. Measured 5924 -> -1600, back to positive after ~3 ticks, then normal acceleration from ~0 (about 1.3 s to return to 3000). Bounce sound variant picked with the RNG when speed >= 0x1770. |
+| Object class **EDGE** | `05:F6F5` -> `F6FA/F6FF` | same | speed and forward distance halved; steering angle forced to +-0x5000 **toward the road centre** (sign of the player's lateral), steering input locked (`$1EEC = 0x600`, the angle decays by 0x600 per tick, ~14 ticks). The sideways displacement per tick is capped by the steer limit (`$1E92/$1E94`), so at high speed the kick is often one ~1100-unit nudge and the lock ends early; at low speed it plays out (~6500 units seen). |
+| Object class **SIDE** | `05:F6F1` | same | same as EDGE but the kick is **away from the object** (toward the side you hit it from). Types 21 and 58 only. |
+| Group objects (gantry pillars, tunnel) | `05:ED3A` | lateral ranges from `00:A15F/A167` | REV behaviour (speed -> -min(speed/2,1600)). |
+| Tunnel/bridge walls | `05:D808..D838` | only while `$1EBE` is set by group markers C004/C006 | lateral clamped to the limit, EDGE kick (+-0x5000, lock, speed halved). |
+| Off the road (no wall) | `05:D83B` | `|lat|` beyond the scenery limit (`$017B/$017D` at `[scenery word]`, e.g. +-10229) | each tick `speed -= speed*6/256` (about 7% per 2 ticks measured) |
+
+Object classes per type (P1 table `05:F5C3`, P2 table `05:F63B`, identical): **EDGE** = 5-10, 13, 15, 27, 38, 42; **SIDE** = 21, 58; **REV** = every other type 0-59. Each object is tested once, when the car's position crosses its 32-unit slot (about 64 units ahead of the car reference), with **no height or speed dependence**. Hit half-width (player lateral vs object lateral, in `$1E8A` units = 2x the table value): right `A05F[type]`, left `A0DF[type]`: 2048 for most types (so +-4096), 1536 for 8-10/13/21/45/59 (+-3072), 1792 for 6/7 (+-3584), 1024 for 27/28/38/39 (+-2048), 768 for 24, 512 for 11/12/15/41/42/56(right), 256 for 22(right)/23(left). Asymmetric: 22 (R 256, L 2048), 23 (R 2048, L 256), 40 (L 1536), 54 (R 768, L 1792), 55 (R 1792, L 768), 56 (R 512, L 1792), 57 (R 1792, L 512), 58 (R 1024, L 512).
+
+Notes
+* "Hit by a backmarker from behind" is really *any bot that catches you*: with the swap you leave at twice its speed, so being hit while slow (after a crash, in the pit exit) is a free speed-up of up to ~176 km/h, and the bot is parked at your speed for a moment. Rear-ending a bot costs you only `speed - 2*bot_speed`.
+* A bot weaving sideways into you while you are alongside does nothing; contact only happens at the progress crossing.
+* The bot's pending start ramp is added to the bot's new speed but not to what the player receives.
