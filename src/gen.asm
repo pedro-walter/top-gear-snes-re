@@ -54,6 +54,19 @@ MASKD   = $F86C
 DD      = $F870         ; 4 words D[0..3]
 T6      = $F878
 LIM     = $F87A
+HLAST   = $F87E         ; hazard generator variables
+HR      = $F880
+HB      = $F882
+HJ      = $F884
+HTY     = $F886
+HSD     = $F888
+HLT     = $F88A
+HI      = $F88C
+HRUN    = $F88E
+HST     = $F890
+HK      = $F892
+HM      = $F894
+HBASE   = $F896
 ROADW   = $F87C         ; replacement bits for 00:DEE4[env] (pit road style, bits 9-11 and 15), used by hook_style
 SLOPE   = $F000         ; 48 words
 CURVE   = $F080         ; 48 words
@@ -1204,6 +1217,336 @@ ac_lf:
     lda.l $00C592,x
     rts
 
+
+hz_put:                         ; hazard object at slot HJ: type HTY, side HSD (1 = left), lateral HLT; skipped near the gantry / pit / signs
+    lda HJ
+    cmp #96
+    bcc hp_r
+    lda LIM
+    sec
+    sbc #96
+    cmp HJ
+    bcc hp_r
+    beq hp_r
+    lda HJ
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta T6                      ; piece of the slot
+    sec
+    sbc PP
+    clc
+    adc #3
+    cmp #5
+    bcc hp_r                    ; pit pieces PP-3..PP+1
+    lda T6
+    inc a
+    cmp LEN
+    beq hp_r                    ; the last piece
+    lda HJ
+    asl a
+    tax
+    lda.l $7E6400,x
+    bmi hp_r                    ; group object
+    beq hp_w
+    xba
+    and #$007E
+    lsr a                       ; type
+    cmp #8
+    beq hp_r
+    cmp #9
+    beq hp_r
+    cmp #13
+    beq hp_r
+    cmp #58
+    beq hp_r
+hp_w:
+    lda HTY
+    xba
+    asl a                       ; type << 9
+    ldy HSD
+    beq hp_s
+    ora #$0100
+hp_s:
+    ora HLT
+    sta.l $7E6400,x
+hp_r:
+    rts
+
+hz_rocks:                       ; rock field at slot HBASE, side HSD (the original Los Angeles pattern); skipped when too close to the last one
+    lda HLAST
+    clc
+    adc #40
+    sta T4
+    lda HBASE
+    sec
+    sbc T4
+    beq hr_x
+    bmi hr_x
+    ldx #0
+hr_l:
+    lda.l rockt,x
+    and #$00FF
+    clc
+    adc HBASE
+    sta HJ
+    lda.l rockt+1,x
+    and #$00FF
+    sta HLT
+    lda HR
+    sta HTY
+    phx
+    jsr hz_put
+    plx
+    inx
+    inx
+    cpx #14
+    bcc hr_l
+    lda HBASE
+    clc
+    adc #26
+    sta HLAST
+hr_x:
+    rts
+
+hz_abs:
+    bpl ha_r
+    eor #$FFFF
+    inc a
+ha_r:
+    rts
+
+add_hazards:                    ; rock fields (start, before sharp curves, bottom of steep slopes) and one single-lane barrier closure
+    lda ENV
+    asl a
+    tax
+    lda.l hazt,x
+    and #$00FF
+    sta HR
+    bne hz_go
+    rts
+hz_go:
+    lda.l hazt,x
+    xba
+    and #$00FF
+    sta HB
+    lda #$FC18
+    sta HLAST                   ; -1000
+    lda #240
+    sta HBASE
+    lda LEN
+    and #1
+    sta HSD
+    jsr hz_rocks
+    lda #96
+    sta HI
+hz_i:
+    lda LIM
+    sec
+    sbc #96
+    cmp HI
+    bcc hz_clo
+    beq hz_clo
+    lda HI
+    asl a
+    tax
+    lda.l $7E4C00,x
+    jsr hz_abs
+    sta T4                      ; |curve[i]|
+    lda HI
+    asl a
+    tax
+    lda.l $7E4BFE,x
+    jsr hz_abs
+    cmp #32
+    bcs hz_sl                   ; |curve[i-1]| >= 32
+    lda T4
+    cmp #32
+    bcc hz_sl                   ; |curve[i]| < 32
+    lda HI
+    sec
+    sbc #70
+    sta HBASE
+    lda HI
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #1
+    sta HSD
+    jsr hz_rocks
+hz_sl:
+    lda HI
+    asl a
+    tax
+    lda.l $7E4000,x
+    jsr hz_abs
+    sta T4                      ; |slope[i]|
+    lda HI
+    asl a
+    tax
+    lda.l $7E3FFE,x
+    jsr hz_abs
+    cmp #64
+    bcc hz_nx                   ; |slope[i-1]| < 64
+    lda T4
+    cmp #64
+    bcs hz_nx                   ; |slope[i]| >= 64
+    lda HI
+    clc
+    adc #8
+    sta HBASE
+    lda HI
+    and #1
+    sta HSD
+    jsr hz_rocks
+hz_nx:
+    inc HI
+    jmp hz_i
+hz_clo:                         ; one barrier closure on the first long straight when (L xor laps) is odd
+    lda LEN
+    eor LAPS
+    and #1
+    bne hz_c1
+    rts
+hz_c1:
+    stz HRUN
+    lda #300
+    sta HI
+hz_s:
+    lda LIM
+    sec
+    sbc #96
+    cmp HI
+    bcc hz_nos
+    beq hz_nos
+    lda HI
+    asl a
+    tax
+    lda.l $7E4C00,x
+    jsr hz_abs
+    cmp #8
+    bcs hz_s0
+    inc HRUN
+    lda HRUN
+    cmp #112
+    beq hz_found
+    bra hz_sn
+hz_s0:
+    stz HRUN
+hz_sn:
+    inc HI
+    bra hz_s
+hz_nos:
+    rts
+hz_found:
+    lda HI
+    sec
+    sbc #105
+    sta HST                     ; start slot of the closure
+    stz HM
+hz_m:
+    stz HSD
+    lda HM
+    sta HK                      ; mm for the right side (m0 = 0)
+    jsr hz_step
+    lda #1
+    sta HSD
+    lda HM
+    sec
+    sbc #10
+    sta HK                      ; mm for the left side (m0 = 10)
+    jsr hz_step
+    inc HM
+    lda HM
+    cmp #25
+    bcc hz_m
+    rts
+
+hz_step:                        ; barrier of closure step HM, side HSD, mm = HK (outside 0..14: nothing)
+    lda HK
+    bmi hs_r
+    cmp #15
+    bcs hs_r
+    cmp #5
+    bcc hs_k                    ; k = mm for mm <= 4
+    cmp #10
+    bcc hs_k4
+    lda #14
+    sec
+    sbc HK                      ; k = 14 - mm
+    bra hs_k
+hs_k4:
+    lda #4
+hs_k:
+    sta HK                      ; k
+    lda HM
+    asl a
+    asl a
+    clc
+    adc HST
+    ldx HSD
+    beq hs_j
+    inc a
+    inc a
+hs_j:
+    sta HJ
+    sta T5
+    stz T3
+    lda HSD
+    beq hs_e
+    lda #$0100
+    sta T3
+hs_e:
+    jsr edge_get
+    jsr hz_abs
+    sta T4                      ; E
+    asl a
+    clc
+    adc T4
+    lsr a
+    lsr a
+    lsr a
+    sta T2                      ; inner = 3E >> 3
+    lda T4
+    clc
+    adc #20
+    sta T4                      ; E + 20
+    sec
+    sbc T2
+    sta T2                      ; E + 20 - inner
+    stz T0
+    ldx HK
+    beq hs_nm
+hs_mul:
+    lda T0
+    clc
+    adc T2
+    sta T0
+    dex
+    bne hs_mul
+hs_nm:
+    lda T0
+    lsr a
+    lsr a                       ; ((E + 20 - inner) * k) >> 2
+    sta T0
+    lda T4
+    sec
+    sbc T0
+    cmp #256
+    bcc hs_ok
+    lda #255
+hs_ok:
+    sta HLT
+    lda HB
+    sta HTY
+    jsr hz_put
+hs_r:
+    rts
+
 add_chevrons:                   ; turn signs: one chevron every 4 slots from 20 slots before a curve onset to the end of the curve
     lda LEN
     asl a
@@ -1352,7 +1695,9 @@ ac_fin:
 ac_next:
     inc T0
     jmp ac_i
-ac_done:                        ; roadside trees/bushes in the gaps: every 8 slots from 52, alternating sides, 60 units outside the edge
+ac_done:
+    jsr add_hazards
+                                ; roadside trees/bushes in the gaps: every 8 slots from 52, alternating sides, 60 units outside the edge
     lda ENV
     asl a
     tax
@@ -1605,6 +1950,8 @@ slope_levels:   .db 1,4,3, 5,7,6, 15,17,16, 18,20,19, 21,23,22, 9,12,11, 24,26,2
 slope_bumps:    .db 2,14,13,10
 curve_levels:   .db 2,4,3, 6,8,7, 10,12,11
 curve_bumps:    .db 1,17,18,19,20, 5,21,22,23,24, 9,25,26,27,28, 13,29,30,31,32
+hazt:           .db 27,7,24,24,7,7,15,7,15,15,27,27,27,27,15,15,7,7,27,27,15,15,15,15,24,24,15,7,31,31,24,24,15,15,15,15,15,15,15,15,15,15,15,15,15,15,27,7,26,26,27,27,15,15,15,15,15,15,15,7,27,27,27,27
+rockt:          .db 0,60, 5,60, 13,32, 16,60, 20,16, 21,60, 25,0
 scent:          .db 27,27,24,27,0,0,24,15,27,15,27,26,27,14,15,27,0,0,27,27,27,15,15,14,24,56,15,15,31,31,24,27,25,31,27,25,15,14,31,15,27,24,24,57,27,15,27,26,26,56,27,26,15,27,24,27,27,24,27,15,27,25,27,27
 dropt:          .db 28,38,0,0, 15,0,0,0, 11,12,42,0, 11,41,0,0, 14,0,0,0, 24,0,0,0, 15,28,0,0, 24,0,0,0, 55,0,0,0, 54,55,15,0, 43,0,0,0, 0,0,0,0, 27,0,0,0, 10,0,0,0, 0,0,0,0, 11,12,26,0, 27,0,0,0, 31,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 27,7,0,0, 0,0,0,0, 0,0,0,0, 27,0,0,0, 24,0,0,0, 0,0,0,0, 25,0,0,0, 14,0,0,0, 30,0,0,0, 15,29,0,0, 15,14,0,0
 pit_styles:     .db 20,0,41,24,24,0,1,0, 20,1,45,26,26,0,4,0, 20,1,47,24,26,1,5,1

@@ -80,6 +80,10 @@ DROP = [[28, 38, 0, 0],
 SCENERY = [27,27,24,27,0,0,24,15,27,15,27,26,27,14,15,27,0,0,27,27,27,15,15,14,24,56,15,15,31,31,24,27,25,31,27,25,15,14,31,15,27,24,24,57,27,15,27,26,26,56,27,26,15,27,24,27,27,24,27,15,27,25,27,27]
 DROPW = {14: 31}                          # types removed only within WIN slots of the gantry (Black Forest keeps its trees elsewhere)
 WIN = 64
+# per environment: (rock type, barrier type) for the hazards; types the environment's own original track uses (0 = none)
+HAZARD = [27,7,24,24,7,7,15,7,15,15,27,27,27,27,15,15,7,7,27,27,15,15,15,15,24,24,15,7,31,31,24,24,15,15,15,15,15,15,15,15,15,15,15,15,15,15,27,7,26,26,27,27,15,15,15,15,15,15,15,7,27,27,27,27]
+ROCKS = [(0, 60), (5, 60), (13, 32), (16, 60), (20, 16), (21, 60), (25, 0)]    # offset, lateral of a rock field (as near the start of Los Angeles)
+GA = 96                                  # hazards keep this many slots away from the start gantry
 SIGN_TYPES = (8, 9, 13)                  # right chevron, left chevron, pit flag
 # (scenery template, pit word side bit, object group of the 1st half, flag template far/near, flag record slot (0 = b0, 1 = b1),
 #  road style of type 3, mirror bit of 00:DEE4).  Exactly the combinations of the original tracks: the pit lane is on the left
@@ -250,7 +254,52 @@ def expand_objs(recs, diff):
             else: words.append(d_ | low)
     return words
 
-def add_chevrons(t, curve, objs, scen):
+def hz_put(t, objs, j, typ, side, lat):
+    """Hazard object at slot j unless the slot holds a sign, group or pit object or lies near the gantry / pit."""
+    L, pp = t['L'], t['pitpiece']
+    pc = j // 32
+    if j < GA or j >= L * 32 - GA or pp - 3 <= pc <= pp + 1 or pc == L - 1: return
+    w = objs[j]
+    if w & 0x8000 or (w and (w >> 9) & 63 in (8, 9, 13, 58)): return
+    objs[j] = (typ << 9) | (side << 8) | lat
+
+def edge_at(t, scen, j, side):
+    sw = (W(0, 0xDEE4 + 2 * t['env']) & 0x71FF) | t['roadw']
+    st_ = (sw >> (3 * (W(0, 0x9B3F + (scen[j] & 0x7FFE)) >> 2))) & 7
+    return abs(s16(W(0, 0xC592 + 4 * st_ + (0 if side else 2))))
+
+def add_hazards(t, curve, slope, objs, scen):
+    """Rock fields (start, ahead of sharp curves, at the bottom of steep slopes) and one single-lane barrier closure on a long straight."""
+    L = t['L']; LIM = L * 32
+    R, B = HAZARD[2 * t['env']], HAZARD[2 * t['env'] + 1]
+    if not R: return
+    last = [-1000]
+    def rocks(base, side):
+        if base <= last[0] + 40: return
+        for o, l in ROCKS: hz_put(t, objs, base + o, R, side, l)
+        last[0] = base + 26
+    rocks(240, L & 1)
+    for i in range(GA, LIM - GA):
+        a, b = abs(s16(curve[i - 1])), abs(s16(curve[i]))
+        if b >= 32 and a < 32: rocks(i - 70, (i >> 5) & 1)
+        if abs(s16(slope[i - 1])) >= 64 and abs(s16(slope[i])) < 64: rocks(i + 8, i & 1)
+    if (L ^ t['laps']) & 1:
+        run = 0; start = -1
+        for i in range(300, LIM - GA):
+            run = run + 1 if abs(s16(curve[i])) < 8 else 0
+            if run == 112: start = i - 111 + 6; break
+        if start >= 0:
+            for m in range(25):
+                for side, m0 in ((0, 0), (1, 10)):
+                    mm = m - m0
+                    if mm < 0 or mm > 14: continue
+                    k = mm if mm <= 4 else (4 if mm <= 9 else 14 - mm)
+                    j = start + 4 * m + 2 * side
+                    E = edge_at(t, scen, j, side)
+                    inner = (E * 3) >> 3
+                    hz_put(t, objs, j, B, side, min(255, E + 20 - (((E + 20 - inner) * k) >> 2)))
+
+def add_chevrons(t, curve, objs, scen, SLOPE_):
     """Turn signs along every curve: one chevron every 4 slots from 20 slots ahead of the curve onset to the end of the curve.
     Type 9 ('<', right side of the road) for a positive curve, type 8 ('>', left side) for a negative one."""
     L, pp = t['L'], t['pitpiece']
@@ -275,6 +324,7 @@ def add_chevrons(t, curve, objs, scen):
             i = e + 1
         else:
             i += 1
+    add_hazards(t, curve, SLOPE_, objs, scen)
     ta, tb = SCENERY[2 * t['env']], SCENERY[2 * t['env'] + 1]
     if ta:                                               # roadside trees/bushes in the gaps: every 8 slots, alternating sides, 60 units outside the edge
         for j in range(52, L * 32 - 48, 8):
@@ -294,8 +344,9 @@ def add_chevrons(t, curve, objs, scen):
 def tables(t, diff=1):
     curve = expand_curve(t['curve']); objs = expand_objs(t['recs'], diff)
     scen = expand_scen(t['scen'])
-    add_chevrons(t, curve, objs, scen)
-    return dict(slope=expand_slope(t['slope']), curve=curve, scen=scen, objs=objs)
+    slope = expand_slope(t['slope'])
+    add_chevrons(t, curve, objs, scen, slope)
+    return dict(slope=slope, curve=curve, scen=scen, objs=objs)
 
 # ---------------------------------------------------------------- validation ---------------------------------
 def validate(t):
