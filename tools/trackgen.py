@@ -274,16 +274,17 @@ def add_hazards(t, curve, slope, objs, scen):
     R, B = HAZARD[2 * t['env']], HAZARD[2 * t['env'] + 1]
     if not R: return
     last = [-1000]
+    left = [1 if (L * 7 + t['laps'] * 5 + t['env'] * 3 + t['hill'] * 3 + t['curvy'] * 5) & 7 == 0 else 0]   # ~1 track in 8 gets one rock field (the originals have about 0.5 in-road groups per track)
     def rocks(base, side):
-        if base <= last[0] + 40: return
+        if left[0] <= 0 or base <= last[0] + 40: return
+        left[0] -= 1
         for o, l in ROCKS: hz_put(t, objs, base + o, R, side, l)
         last[0] = base + 26
-    rocks(240, L & 1)
     for i in range(GA, LIM - GA):
         a, b = abs(s16(curve[i - 1])), abs(s16(curve[i]))
         if b >= 32 and a < 32: rocks(i - 70, (i >> 5) & 1)
         if abs(s16(slope[i - 1])) >= 64 and abs(s16(slope[i])) < 64: rocks(i + 8, i & 1)
-    if (L ^ t['laps']) & 1:
+    if (L + t['laps'] * 3 + t['env'] * 5 + t['hill'] * 7) & 15 == 0:     # ~1 track in 16 gets a closure
         run = 0; start = -1
         for i in range(300, LIM - GA):
             run = run + 1 if abs(s16(curve[i])) < 8 else 0

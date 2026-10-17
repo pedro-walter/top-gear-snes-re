@@ -67,6 +67,7 @@ HST     = $F890
 HK      = $F892
 HM      = $F894
 HBASE   = $F896
+HLEFT   = $F898
 ROADW   = $F87C         ; replacement bits for 00:DEE4[env] (pit road style, bits 9-11 and 15), used by hook_style
 SLOPE   = $F000         ; 48 words
 CURVE   = $F080         ; 48 words
@@ -1275,7 +1276,9 @@ hp_s:
 hp_r:
     rts
 
-hz_rocks:                       ; rock field at slot HBASE, side HSD (the original Los Angeles pattern); skipped when too close to the last one
+hz_rocks:                       ; rock field at slot HBASE, side HSD (the original Los Angeles pattern); skipped when none is left or too close to the last one
+    lda HLEFT
+    beq hr_x
     lda HLAST
     clc
     adc #40
@@ -1285,6 +1288,7 @@ hz_rocks:                       ; rock field at slot HBASE, side HSD (the origin
     sbc T4
     beq hr_x
     bmi hr_x
+    dec HLEFT
     ldx #0
 hr_l:
     lda.l rockt,x
@@ -1334,12 +1338,47 @@ hz_go:
     sta HB
     lda #$FC18
     sta HLAST                   ; -1000
-    lda #240
-    sta HBASE
+    stz HLEFT                   ; one track in 8: (7 L + 5 laps + 3 env + 3 hill + 5 curvy) & 7 == 0 -> one rock field
     lda LEN
-    and #1
-    sta HSD
-    jsr hz_rocks
+    asl a
+    asl a
+    asl a
+    sec
+    sbc LEN
+    sta T4
+    lda LAPS
+    asl a
+    asl a
+    clc
+    adc LAPS
+    clc
+    adc T4
+    sta T4
+    lda ENV
+    asl a
+    clc
+    adc ENV
+    clc
+    adc T4
+    sta T4
+    lda HILL
+    asl a
+    clc
+    adc HILL
+    clc
+    adc T4
+    sta T4
+    lda CURVY
+    asl a
+    asl a
+    clc
+    adc CURVY
+    clc
+    adc T4
+    and #7
+    bne hz_ng
+    inc HLEFT
+hz_ng:
     lda #96
     sta HI
 hz_i:
@@ -1406,11 +1445,32 @@ hz_sl:
 hz_nx:
     inc HI
     jmp hz_i
-hz_clo:                         ; one barrier closure on the first long straight when (L xor laps) is odd
-    lda LEN
-    eor LAPS
-    and #1
-    bne hz_c1
+hz_clo:                         ; one barrier closure on the first long straight, one track in 16: (L + 3 laps + 5 env + 7 hill) & 15 == 0
+    lda LAPS
+    asl a
+    clc
+    adc LAPS
+    clc
+    adc LEN
+    sta T4
+    lda ENV
+    asl a
+    asl a
+    clc
+    adc ENV
+    clc
+    adc T4
+    sta T4
+    lda HILL
+    asl a
+    asl a
+    asl a
+    sec
+    sbc HILL
+    clc
+    adc T4
+    and #15
+    beq hz_c1
     rts
 hz_c1:
     stz HRUN

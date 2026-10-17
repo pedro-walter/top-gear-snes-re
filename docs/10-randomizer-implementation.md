@@ -87,7 +87,8 @@ the env's two most common tree/bush types in the original data, minus the env's 
 * The object mask is now always `$E000` (objects of every difficulty): the seed decides the track, not the difficulty setting.
 * Black Forest's trees (type 31) are only removed within 64 slots of the gantry (`DROPW`); every other environment still drops its DROP types everywhere (a 128-slot window was not enough for them).
 * `add_hazards` (both generators, after the turn signs, before the scenery fill; `HAZARD` / `hazt` = rock type and barrier type per environment, taken from the types the environment's own original uses):
-  rock fields (the pattern of the original Los Angeles start, 26 slots) at slot 240, 70 slots before every sharp curve onset (|curve| >= 32) and 8 slots after a steep slope ends (|slope| >= 64),
-  at least 40 slots apart; and, when (L xor laps) is odd, one single-lane barrier closure (type 7 yellow barriers where the environment has them) on the first 112-slot straight after slot 300:
+  **Frequency matched to the originals** (championship objects: 18 in-road object groups / 13 barrier groups over 32 tracks = 0.56 / 0.41 per track; the copied runs already give 0.48 / 0.32, so only a little is added: 0.60 / 0.34 in 400 seeds):
+  one track in 8 gets one rock field (the pattern of the original Los Angeles start, 26 slots) at the first of: 70 slots before a sharp curve onset (|curve| >= 32), 8 slots after a steep slope ends (|slope| >= 64);
+  one track in 16 gets one single-lane barrier closure (type 7 yellow barriers where the environment has them) on the first 112-slot straight after slot 300:
   right side tapers in, holds, tapers out while the left side tapers in, holds, tapers out (like Las Vegas on championship). Nothing within 96 slots of the gantry or at the pit pieces; signs/pit/group objects are never overwritten.
   Gantry visible in all 32 environments (checked with a script of the same kind as `tools/gantry_search.py`).
