@@ -42,13 +42,14 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   positive curve, type 8 (`>`) on the left before a negative one - and pit flags (type 13, template `$18`/`$1A`) on the two pieces
   before the pit like the original tracks do. Python reference and 65816 code are identical (`add_chevrons`).
 * **No minimap, lap-progress strip instead** (`src/bar.asm`): the decompressed minimap bitmap is blanked (`0F:8232`) and the lap-record line is moved
-  off screen. The black bar between the two views now shows the progress of the cars along the lap: a red start line (left, with a white border) and a
-  finish line (right), and three dots - player 1 (red), player 2 / computer car (blue) and the leader (green, hidden while player 1 or 2 leads).
-  x = position on the lap (`$1ED7` / `$1EDA` / `$0219+slot`, scaled by the lap length `$0200` to 200 pixels, 8x8 multiply + 16/8 divide), y = lateral
-  position in three levels (left third / middle / right third of the road).
-  * The dots are the game's own marker sprites (tiles `$7F`, palettes 0/1/5). `update_map_dots` (`00:8910`) is replaced by a JSL to `hook_mapdots`
+  off screen. The black bar between the two views shows the progress along the lap: a red start line (left, white border), a finish line (right), and
+  three small borderless 4x2 dots in fixed lanes: player 1 on top, the leader in the middle (hidden while player 1 or 2 leads), player 2 / the
+  computer car at the bottom. x = position on the lap (`$1ED7` / `$1EDA` / `$0219+slot`, scaled by the lap length `$0200` to 200 pixels, 8x8 multiply +
+  16/8 divide). Colours are the car's own sprite palette, colour 9 (bright: contrast on black is fine for all palettes): players use palettes 0 / 1
+  as in the original, the leader the palette of its car record (`word >> 13 & 3`; bots alternate palettes 2 and 3 by record code `$22`/`$32`).
+  * The dots are the game's own marker sprites; the tile `$7F` (used only by them, VRAM byte `$4FE0`) is redrawn by `hook_bar` at the HUD build. `update_map_dots` (`00:8910`) is replaced by a JSL to `hook_mapdots`
     which writes `$0112/$0114/$0116` = x | y << 8; the sprite renderer (`01:808B..80AE`, player 1's buffer) already copies them to the sprites. The
-    leader is found with the game's own loop (highest `$021A` key over the 20 cars) and hidden when it is the slot in `$0204` or `$0206`.
+    leader's tile/attribute word goes to `$1FB2` (patched `LDA` at `01:80A0`); the leader is found with the game's own loop (highest `$021A` key over the 20 cars) and hidden when it is the slot in `$0204` or `$0206`.
     Player 2's buffer (`01:8590/85A2/85B4`, y + $70) is parked off screen. **Correction:** the routines `00:8966/8A2C` that the earlier text called the
     marker writers are not executed in the race (exec count 0); the old parking patches on them did nothing, so the original dots had been drawn
     over the blank minimap corner. They are left in place for whatever calls them.

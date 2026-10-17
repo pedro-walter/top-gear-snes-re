@@ -2,12 +2,14 @@
 ; Race HUD: lap progress strip in the black bar between the two views (replaces the minimap).
 ;   * start line (left) and finish line (right): a BG1 tile (red line with a white border) drawn into the bar's
 ;     tilemap row 13 when the HUD is built (00:CBE2); the graphics go to the unused BG1 tiles $A8 (line) / $A9 (black)
-;   * three dots = the game's own marker sprites (tile $7F): player 1 (red), player 2 / computer car (blue), and the
-;     leader (green) unless the leader is player 1 or 2.  x = position on the lap, y = lateral position on the road.
+;   * three dots = the game's own marker sprites, with the tile $7F redrawn as a small borderless 4x2 block (the tiles $7F/$FF are only used
+;     by these markers): player 1 (upper lane), the leader (middle lane, unless player 1 or 2 leads) and player 2 / the computer car
+;     (lower lane).  x = position on the lap.  The colours are the car's own sprite palette: players 0 / 1 as in the original, the leader
+;     the palette of its car (record word >> 13 & 3), colour 9 of the palette.
 ; The usable strip is only scan lines 104..108 (BG1 tile row 13, tile rows 0..4): the game forces blank on lines 109..114
 ; while it swaps the palette and OAM for the second view (00:BE88..BEF4), and the second view starts at line 115.  The strip
-; is made opaque black (it covers the last lines of the first view), so the black bar is 104..114.  A dot is 5 lines
-; high, so the lateral position has three levels (left third, middle, right third of the road).
+; is made opaque black (it covers the last lines of the first view), so the black bar is 104..114.  The three lanes of two lines
+; are the lines 103..108.
 ; ============================================================================================================
 .a16
 .i16
@@ -20,7 +22,10 @@ BX      = $7FF8B8               ; scratch: dot x
 
 BAR_X0  = 24                    ; sprite x of a dot at the start line (line = tile column 3, pixels 24..31)
 BAR_W   = 200                   ; start line -> finish line (tile column 28)
-BAR_Y   = 102                   ; sprite y of a dot in the middle of the strip (art rows 1..5 -> scan lines 104..108)
+BAR_Y1  = 102                   ; sprite y of the player 1 lane (art rows 0..1 -> scan lines 103..104)
+BAR_YL  = 104                   ; leader lane (105..106)
+BAR_Y2  = 106                   ; player 2 lane (107..108)
+BAR_ATTR = $001FB2              ; the leader's tile | attribute word (unused lap-record RAM in the race)
 
 ; ---- 00:8910 update_map_dots: the three marker words $0112 (p1), $0114 (p2), $0116 (leader) = x | y << 8 -------------
 .org $008910
@@ -28,9 +33,9 @@ BAR_Y   = 102                   ; sprite y of a dot in the middle of the strip (
     rts
 
 ; ---- 01:8000 sprite_renderer writes the three marker sprites into the sprite buffers (the 00:8966/8A2C copies are not used in the race) --
-; player 1's buffer keeps its three loads ($0112 / $0116 / $0114, y as is); the leader gets the player dot tile with palette 5 (green)
+; player 1's buffer keeps its three loads ($0112 / $0116 / $0114, y as is); the leader's tile / attribute word comes from hook_mapdots
 .org $0180A0
-    lda #$3A7F                  ; was $30FF
+    lda $1FB2                   ; was $30FF: the leader's tile | palette
 ; player 2's buffer (+$7000 on y) is parked off screen
 .org $018590
     lda #$8080                  ; was LDA $0114
@@ -62,6 +67,16 @@ bar_hb_t:
     inx
     cpx #64
     bcc bar_hb_t
+    lda #$27F0                  ; sprite tile $7F (table at byte $4000): the dot
+    sta.l $002116
+    ldx #0
+bar_hb_d:
+    lda.l bar_dot,x
+    sta.l $002118
+    inx
+    inx
+    cpx #32
+    bcc bar_hb_d
     lda #$0DA0
     sta.l $002116
     ldx #0
@@ -95,16 +110,18 @@ bar_gfx:
     .db $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
 
+bar_dot:                        ; 4bpp: pixel columns 2..5 of rows 0 and 1 in colour 9 (planes 0 and 3)
+    .dw $003C,$003C,0,0,0,0,0,0
+    .dw $3C00,$3C00,0,0,0,0,0,0
+
 hook_mapdots:
     php
     rep #$30
-    lda.l $001E8A
-    tax
+    ldx #BAR_Y1
     lda.l $001ED7
     jsr bar_dot_word
     sta.l $000112               ; player 1
-    lda.l $001E8C
-    tax
+    ldx #BAR_Y2
     lda.l $001EDA
     jsr bar_dot_word
     sta.l $000114               ; player 2 / computer car
@@ -130,14 +147,21 @@ bar_hm_n:
     bne bar_hm_l
     lda.l BY
     cmp.l $000204
-    beq bar_hm_h                    ; a human car leads: no third dot
+    beq bar_hm_h                ; a human car leads: no third dot
     cmp.l $000206
     beq bar_hm_h
     tax
-    lda.l $000214,x             ; the leader's lateral position
-    pha
-    lda.l $000219,x             ; and its position on the lap
-    plx
+    lda.l $000212,x             ; the leader's sprite palette code (bits 13/14 of the record word)
+    xba
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$0006                  ; = palette << 1
+    ora #$307F                  ; priority 3, tile $7F
+    sta.l BAR_ATTR
+    lda.l $000219,x             ; its position on the lap
+    ldx #BAR_YL
     jsr bar_dot_word
     bra bar_hm_s
 bar_hm_h:
@@ -147,29 +171,13 @@ bar_hm_s:
     plp
     rtl
 
-bar_dot_word:                       ; A = position on the lap, X = lateral -> A = (sprite y << 8) | sprite x
+bar_dot_word:                   ; A = position on the lap, X = sprite y -> A = (sprite y << 8) | sprite x
     phx
     jsr bar_pos_x
     clc
     adc #BAR_X0
     sta.l BX
-    pla                         ; lateral (+-0x2800 = road edges): -1 / 0 / +1 line
-    bit #$8000
-    bne bar_dw_n
-    cmp #3413
-    bcc bar_dw_0
-    lda #1
-    bra bar_dw_y
-bar_dw_n:
-    cmp #$F2AB
-    bcs bar_dw_0
-    lda #$FFFF
-    bra bar_dw_y
-bar_dw_0:
-    lda #0
-bar_dw_y:
-    clc
-    adc #BAR_Y
+    pla
     xba
     and #$FF00
     ora.l BX
