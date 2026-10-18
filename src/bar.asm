@@ -282,10 +282,10 @@ hook_lapctr:
     sta.l $002115               ; VMAIN: word increment
     rep #$20
     lda.l $001E76
-    ldx #$0CB5                  ; $0C00 + 5 * 32 + 21 (first of 9 cells)
+    ldx #$0CB6                  ; $0C00 + 5 * 32 + 22 (first of 8 cells; column 21 belongs to the messages, e.g. the T of LAPS LEFT)
     jsr bar_lc_draw
     lda.l $001E78
-    ldx #$0E75                  ; $0C00 + 19 * 32 + 21
+    ldx #$0E76                  ; $0C00 + 19 * 32 + 22
     jsr bar_lc_draw
     rep #$30
     lda.l $001E5A               ; the instruction this hook replaces: the caller branches on its flags
@@ -328,9 +328,9 @@ bar_ld_o:
     sta.l LCN
     pla
     sta.l $002116
-    lda #18
+    lda #16
     sec
-    sbc.l LCN                   ; blank cells in front = 9 - cells
+    sbc.l LCN                   ; blank cells in front = 8 - cells (the counter is at most 'LAP 8/8' = 7 cells)
     lsr a
     tax
     beq bar_ld_w

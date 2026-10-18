@@ -1,7 +1,7 @@
 ; ============================================================================================================
 ; Hex keypad for the seed (bank $11).  Big gold glyphs (16x16) for the typed code and for 18 keys in a 6x3 grid:
 ;   0 1 2 3 4 5 / 6 7 8 9 b A.. see tools/bigfont.py: 0-5, 6-b, C D E F <- END.  The cursor can only stop on real keys.
-; The font has no 3,4,6,7,9,b: they are composed into VRAM tiles 256.. from rectangles of the existing letters (recipe).
+; The hex digits are drawn glyphs (tools/bigfont.py -> kp_gfx), uploaded to VRAM tiles 256..319 when the keypad opens.
 ; Called from the menu code (bank $0F, DBR = $0F, M=X=16 bit) with JSL.  Scratch: low RAM $1FB2.. (the unused lap-record table).
 ; ============================================================================================================
 .a16
@@ -24,249 +24,34 @@ KS_T2   = $1FCE
 KS_SRC  = $1FD0
 KP_CUR  = $1FD2
 KP_PAD  = $1FD4
-KP_BUF  = $7F3000               ; 1024 bytes: tiles 256..287 (two rows of 16 tiles: the sprite layout of the font)
-NGLYPH  = 6
+
 
 .org $118000
 
-; ---- compose the missing glyphs and upload them to VRAM tile 256 (screen forced blank, NMI off meanwhile) ------------
+; ---- upload the hex digit glyphs (kp_gfx, 2 KB drawn by tools/bigfont.py) to VRAM tile 256.. (screen forced blank, NMI off meanwhile) ----
 kp_build_glyphs:
     rep #$30
     sep #$20
     stz $4200
     lda #$80
-    sta $2100                   ; forced blank: VRAM can be read and written
+    sta $2100                   ; forced blank
     sta $2115                   ; VMAIN: increment after the high byte
-    rep #$20
-    ldx #0
-    lda #0
-kb_clr:
-    sta.l KP_BUF,x
-    inx
-    inx
-    cpx #$0400
-    bne kb_clr
-    stz KS_J
-    stz KS_PTR
-kb_entry:
-    ldx KS_PTR
-    lda.l kp_recipe,x
-    and #$00FF
-    cmp #$00FF
-    beq kb_next
-    sta KS_Y0
-    lda.l kp_recipe+1,x
-    and #$00FF
-    sta KS_Y1
-    lda.l kp_recipe+2,x
-    and #$00FF
-    sta KS_SLOT
-    lda.l kp_recipe+3,x
-    and #$00FF
-    sta KS_X0
-    lda.l kp_recipe+4,x
-    and #$00FF
-    sta KS_X1
-    txa
-    clc
-    adc #5
-    sta KS_PTR
-    jsr kb_apply
-    bra kb_entry
-kb_next:
-    inc KS_PTR
-    inc KS_J
-    lda KS_J
-    cmp #NGLYPH
-    bcc kb_entry
-    ; upload KP_BUF -> VRAM word $2000 (tile 256)
-    sep #$20
-    lda #$80
-    sta $2115
     rep #$20
     lda #$2000
     sta $2116
-    lda #$1801
-    sta $4370
-    lda #$3000
-    sta $4372
+    ldx #0
+kb_up:
+    lda.l kp_gfx,x
+    sta $2118
+    inx
+    inx
+    cpx #$0800
+    bcc kb_up
     sep #$20
-    lda #$7F
-    sta $4374
-    rep #$20
-    lda #$0400
-    sta $4375
-    sep #$20
-    lda #$80
-    sta $420B
     lda #$81
     sta $4200                   ; NMI + joypad again
     rep #$30
     rtl
-
-kb_apply:                       ; one recipe rectangle (KS_Y0..Y1, KS_SLOT, KS_X0..X1) of glyph KS_J
-    lda KS_SLOT                 ; source glyph tile = 128 + (slot>>3)*32 + (slot&7)*2
-    and #$0007
-    asl a
-    sta KS_T
-    lda KS_SLOT
-    lsr a
-    lsr a
-    lsr a
-    asl a
-    asl a
-    asl a
-    asl a
-    asl a
-    clc
-    adc KS_T
-    adc #128
-    sta KS_SRC
-    lda KS_Y0
-    sta KS_Y
-ka_y:
-    lda KS_Y
-    cmp KS_Y1
-    beq ka_row
-    bcc ka_row
-    rts
-ka_row:
-    stz KS_TX
-ka_tx:
-    jsr kb_mask                 ; -> KS_MASK (0 = nothing in this tile column)
-    lda KS_MASK
-    beq ka_skip
-    ; source word address = $1000 + tile*16 + (y&7), tile = SRC + (y>>3)*16 + tx
-    lda KS_Y
-    lsr a
-    lsr a
-    lsr a
-    asl a
-    asl a
-    asl a
-    asl a
-    clc
-    adc KS_SRC
-    adc KS_TX
-    asl a
-    asl a
-    asl a
-    asl a
-    sta KS_T
-    lda KS_Y
-    and #$0007
-    clc
-    adc KS_T
-    clc
-    adc #$1000
-    sta KS_T
-    sta $2116
-    lda $2139                   ; planes 0,1 of the row
-    sta KS_P01
-    lda KS_T
-    clc
-    adc #8
-    sta $2116
-    lda $2139                   ; planes 2,3
-    sta KS_P23
-    ; destination offset in KP_BUF = (y>>3)*512 + (2*J + tx)*32 + (y&7)*2
-    lda KS_Y
-    and #$0008
-    beq ka_top
-    lda #$0200
-    bra ka_d1
-ka_top:
-    lda #0
-ka_d1:
-    sta KS_T
-    lda KS_J
-    asl a
-    clc
-    adc KS_TX
-    asl a
-    asl a
-    asl a
-    asl a
-    asl a
-    clc
-    adc KS_T
-    sta KS_T
-    lda KS_Y
-    and #$0007
-    asl a
-    clc
-    adc KS_T
-    sta KS_DST
-    ; mask word
-    lda KS_MASK
-    xba
-    ora KS_MASK
-    sta KS_T2
-    ldx KS_DST
-    lda KS_T2
-    eor #$FFFF
-    and.l KP_BUF,x
-    sta KS_T
-    lda KS_P01
-    and KS_T2
-    ora KS_T
-    sta.l KP_BUF,x
-    lda KS_T2
-    eor #$FFFF
-    and.l KP_BUF+16,x
-    sta KS_T
-    lda KS_P23
-    and KS_T2
-    ora KS_T
-    sta.l KP_BUF+16,x
-ka_skip:
-    inc KS_TX
-    lda KS_TX
-    cmp #2
-    bcc ka_tx
-    inc KS_Y
-    jmp ka_y
-
-kb_mask:                        ; column mask (bit 7 = leftmost pixel) of [KS_X0, KS_X1] inside tile column KS_TX -> KS_MASK
-    stz KS_MASK
-    lda KS_TX
-    asl a
-    asl a
-    asl a
-    sta KS_T                    ; 8*tx
-    lda KS_X0
-    cmp KS_T
-    bcs km_a
-    lda KS_T
-km_a:
-    sec
-    sbc KS_T
-    sta KS_T2                   ; lo
-    lda KS_T
-    clc
-    adc #7
-    cmp KS_X1
-    bcc km_b
-    lda KS_X1
-km_b:
-    sec
-    sbc KS_T                    ; hi (negative when the rectangle lies left of this tile)
-    bmi km_none
-    cmp KS_T2
-    bcc km_none                 ; hi < lo
-    inc a                       ; hi+1
-    tax
-    lda.l kp_shr,x
-    and #$00FF
-    eor #$00FF
-    sta KS_T
-    ldx KS_T2
-    lda.l kp_shr,x
-    and #$00FF
-    and KS_T
-    sta KS_MASK
-km_none:
-    rts
 
 ; ---- screen --------------------------------------------------------------------------------------------------------
 kp_quad:                        ; A = tile of the top-left 8x8, X = byte offset in the tilemap buffer ($0C6C+X): 2x2 tiles, sprite layout
@@ -412,13 +197,13 @@ kr_loop:
     and #$1000                  ; START = finish
     bne kr_done
     lda KP_PAD
-    and #$E040                  ; B, Y, SELECT, X = delete
+    and #$4040                  ; Y, X = delete (as in the name entry)
     beq kr_nodel
     jsr kp_delete
     bra kr_rel
 kr_nodel:
     lda KP_PAD
-    and #$0080                  ; A = press the key
+    and #$8080                  ; A, B = press the key (as in the name entry)
     beq kr_nopress
     lda KP_CUR
     cmp #17

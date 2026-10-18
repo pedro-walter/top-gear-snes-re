@@ -8,14 +8,16 @@ local acts={"down","down","a"}
 for _,b in ipairs(acts) do press(f,b) f=f+24 end f=f+160
 local seq={ {"up",12},{"up",6},{"up",0},{"left",5},{"right",0},{"down",6},{"down",12},{"down",0},{"left",5},{"up",17},{"right",12},{"left",17},
   {"a",17}  }
--- first run the nav checks, then type 3 keys, delete, B, finish with A on END
+-- first run the nav checks, then type 3 keys, delete, B, finish with A on END; B types, X deletes below
 local checks={}
 for _,e in ipairs(seq) do if e[1]~="a" then press(f,e[1]) checks[f+14]={e[2],"nav "..e[1]} f=f+30 end end
 -- go to cell 11 (b): from 17 left x? set via keys: from 17 press up -> 11
 press(f,"up") checks[f+14]={11,"up->11"} f=f+30
 press(f,"a") checks[f+14]={11,"typed b"} f=f+30
 press(f,"left") f=f+30 press(f,"a") checks[f+14]={10,"typed A"} f=f+30
-press(f,"b") checks[f+14]={10,"B deletes"} f=f+30
+press(f,"y") checks[f+14]={10,"Y deletes"} f=f+30
+press(f,"b") checks[f+14]={10,"B types"} f=f+30
+press(f,"x") checks[f+14]={10,"X deletes"} f=f+30
 press(f,"a") f=f+30  -- types A again
 press(f,"down") f=f+30  -- cell 16 (arrow)
 press(f,"a") checks[f+14]={16,"arrow deletes"} f=f+30
