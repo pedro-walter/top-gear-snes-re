@@ -57,6 +57,7 @@ def build(harness=False, root='.'):
     a = Asm(rom)
     a.assemble(text, 'src/' + '+'.join(names))
     purple_title(rom)
+    rom[0x77D70:0x77D72] = rom[0x77D72:0x77D74]    # small-font sprite palette 7 (0E:FD66): index 5 (red, only a few stray pixels in B, D, 8) = the outline colour
     fix_header(rom)
     return rom, a
 
