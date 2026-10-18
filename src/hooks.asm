@@ -346,14 +346,145 @@ bs_sh:
     bne bs_l
     rts
 
-draw_seed_row:                  ; main menu: "xxxxxxxx" after the label SEED (small font)
+SBV     = $7FF8C0               ; scratch: glyph number while the shifted seed tiles are built
+SBB     = $7FF8D0               ; scratch: one 4bpp glyph tile (32 bytes)
+
+build_seed_tiles:               ; forced blank (main menu draw): the 16 hex digit glyphs of the small font (tiles $1B.. / $01..) shifted down
+                                ; 4 lines into two tiles each: upper = BG1 tile $40+2v, lower = $41+2v (VRAM word $1400.., free), so the seed is
+                                ; vertically centred in the 16 line selector bar
+    sep #$20
+    stz $4200
+    lda #$80
+    sta $2100
+    sta $2115
+    rep #$20
+    lda #0
+    sta.l SBV
+bst_g:
+    lda.l SBV
+    cmp #10
+    bcs bst_l
+    clc
+    adc #$001B
+    bra bst_a
+bst_l:
+    sbc #9                      ; carry set: v - 10 + 1
+bst_a:
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc #$1000
+    sta.l $002116
+    ldx #0
+bst_r:
+    sep #$20
+    lda.l $002139
+    sta.l SBB,x
+    lda.l $00213A
+    sta.l SBB+1,x
+    rep #$20
+    inx
+    inx
+    cpx #32
+    bcc bst_r
+    lda.l SBV
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc #$1400
+    sta.l $002116
+    ldy #0
+bst_u:                          ; upper tile: rows 0..3 empty, rows 4..7 = glyph rows 0..3 (per bitplane pair)
+    tya
+    and #7
+    cmp #4
+    bcc bst_uz
+    tya
+    sec
+    sbc #4
+    asl a
+    tax
+    lda.l SBB,x
+    bra bst_uw
+bst_uz:
+    lda #0
+bst_uw:
+    sta.l $002118
+    iny
+    cpy #16
+    bcc bst_u
+    ldy #0
+bst_d:                          ; lower tile: rows 0..3 = glyph rows 4..7, rows 4..7 empty
+    tya
+    and #7
+    cmp #4
+    bcs bst_dz
+    tya
+    clc
+    adc #4
+    asl a
+    tax
+    lda.l SBB,x
+    bra bst_dw
+bst_dz:
+    lda #0
+bst_dw:
+    sta.l $002118
+    iny
+    cpy #16
+    bcc bst_d
+    lda.l SBV
+    inc a
+    sta.l SBV
+    cmp #16
+    bcc bst_g
+    sep #$20
+    lda #$81
+    sta $4200                   ; NMI + joypad again
+    rep #$20
+    rts
+
+draw_seed_row:                  ; main menu: "xxxxxxxx" after the label SEED, in two rows of the shifted tiles (see build_seed_tiles)
     lda #$0E0E                  ; x=14, y=14
     sta.l STR1
     ldx #STR1+2
     jsr build_seed_str
+    lda #$0F0E                  ; x=14, y=15: lower halves
+    sta.l STR1+11
+    ldx #0
+dsr_c:
+    lda.l STR1+2,x
+    and #$00FF
+    sec
+    sbc #$0030
+    cmp #10
+    bcc dsr_d
+    sbc #7
+dsr_d:
+    asl a
+    ora #$0080                  ; character code $80+2v: the game draws it as tile code - $40 = $40+2v
+    sta.l SBV
+    sep #$20
+    lda.l SBV
+    sta.l STR1+2,x
+    inc a
+    sta.l STR1+13,x
+    rep #$20
+    inx
+    cpx #8
+    bne dsr_c
+    sep #$20
+    lda #0
+    sta.l STR1+10               ; terminator (byte: the next string starts right behind it)
+    rep #$20
     lda #$0000
-    sta.l STR1+10               ; terminator + list end
-    sta.l STR1+12
+    sta.l STR1+21               ; terminator of the second string
+    sta.l STR1+22               ; list end
     ldx #STR1
     jsl t_dstr
     rts
@@ -361,6 +492,7 @@ draw_seed_row:                  ; main menu: "xxxxxxxx" after the label SEED (sm
 hook_menu_draw:                 ; main menu: draw the seed after the label "SEED"
     rep #$30
     jsr seed_init
+    jsr build_seed_tiles
     jsr draw_seed_row
     stz $5A
     ldy $1FB0

@@ -24,6 +24,11 @@ BAR_W   = 200                   ; start line -> finish line (tile column 28)
 BAR_Y1  = 105                   ; sprite y of the player 1 lane (art row 0 -> scan line 106)
 BAR_YL  = 106                   ; leader lane (line 107)
 BAR_Y2  = 107                   ; player 2 lane (line 108)
+LCB     = $7FF900               ; scratch: the lap counter cells (up to 5 words)
+LAPV    = $7FF910               ; scratch: lap shown
+TOTV    = $7FF912               ; scratch: laps of the race
+LCN     = $7FF914               ; scratch: bytes in LCB
+
 BAR_ATTR = $001FB2              ; the leader's tile | attribute word (unused lap-record RAM in the race)
 
 ; ---- 00:8910 update_map_dots: the three marker words $0112 (p1), $0114 (p2), $0116 (leader) = x | y << 8 -------------
@@ -42,6 +47,11 @@ BAR_ATTR = $001FB2              ; the leader's tile | attribute word (unused lap
     lda #$8080                  ; was LDA $0116
 .org $0185B4
     lda #$8080                  ; was LDA $0112
+
+; ---- 00:CE61 draw_hud_speed (called every frame with VRAM writable): the lap counters under the timers ---------------------------------
+.org $00CE61
+    jsl hook_lapctr             ; was: REP #$30 / LDA $1E5A (5 bytes); the hook ends with that LDA (the BPL behind it uses its flags)
+    nop
 
 ; ---- 00:CBE2 HUD tilemap: bar rows 13/14 (VRAM $0DA0..$0DDF) --------------------------------------------------------
 .org $00CBE2
@@ -76,6 +86,16 @@ bar_hb_d:
     inx
     cpx #32
     bcc bar_hb_d
+    lda #$0B00                  ; BG1 tiles $B0..$BA: the lap counter font (digits, slash)
+    sta.l $002116
+    ldx #0
+bar_hb_f:
+    lda.l bar_font,x
+    sta.l $002118
+    inx
+    inx
+    cpx #352
+    bcc bar_hb_f
     lda #$0DA0
     sta.l $002116
     ldx #0
@@ -239,4 +259,130 @@ bar_px_r:
     rts
 bar_px_z:
     lda #0
+    rts
+
+; 4bpp tiles $B0..$BA (tools/lapfont.py): digits 0-9 and '/', white with a black outline, palette 3 of BG1
+bar_font:
+    .db $00,$7C,$38,$C6,$44,$BA,$44,$AA,$44,$AA,$44,$BA,$38,$C6,$00,$7C   ; '0'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$38,$10,$68,$30,$48,$10,$68,$10,$28,$10,$6C,$38,$44,$00,$7C   ; '1'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$7C,$38,$C6,$44,$BA,$08,$F6,$10,$6C,$20,$DE,$7C,$82,$00,$FE   ; '2'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$7C,$38,$C6,$44,$BA,$18,$E6,$04,$FA,$44,$BA,$38,$C6,$00,$7C   ; '3'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$1C,$08,$34,$18,$64,$28,$D4,$48,$B6,$7C,$82,$08,$F6,$00,$1C   ; '4'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$FE,$7C,$82,$40,$BE,$78,$86,$04,$FA,$44,$BA,$38,$C6,$00,$7C   ; '5'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$3C,$18,$64,$20,$DC,$78,$86,$44,$BA,$44,$BA,$38,$C6,$00,$7C   ; '6'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$FE,$7C,$82,$04,$FA,$08,$36,$10,$6C,$20,$58,$20,$50,$00,$70   ; '7'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$7C,$38,$C6,$44,$BA,$38,$C6,$44,$BA,$44,$BA,$38,$C6,$00,$7C   ; '8'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$7C,$38,$C6,$44,$BA,$3C,$C2,$04,$7A,$08,$76,$30,$4C,$00,$78   ; '9'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$0E,$04,$1A,$08,$36,$10,$2C,$10,$68,$20,$D8,$40,$B0,$00,$E0   ; '/'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+
+; ---- lap counters: "lap/laps" right aligned in tile columns 25..29 of the row under each timer (rows 5 and 19; the fuel gauge is column 30
+; and starts a row lower) -------------------------------------------------------------------------------------------------------
+; $1E76 / $1E78 = laps completed by player 1 / player 2 (the computer in one player mode): $FFFF while the car is still behind the line
+; of lap 1; the lap shown is that + 1 (at least 1, at most the number of laps).
+hook_lapctr:
+    rep #$30
+    sep #$20
+    lda #$80
+    sta.l $002115               ; VMAIN: word increment
+    rep #$20
+    lda.l $001E76
+    ldx #$0CB9                  ; $0C00 + 5 * 32 + 25
+    jsr bar_lc_draw
+    lda.l $001E78
+    ldx #$0E79                  ; $0C00 + 19 * 32 + 25
+    jsr bar_lc_draw
+    rep #$30
+    lda.l $001E5A               ; the instruction this hook replaces: the caller branches on its flags
+    rtl
+
+bar_lc_draw:                    ; A = laps completed, X = VRAM word of the first cell
+    phx
+    cmp #$8000
+    bcc bar_ld_p
+    lda #0
+bar_ld_p:
+    inc a
+    sta.l LAPV
+    lda.l $001E56
+    sta.l TOTV
+    lda.l LAPV
+    cmp.l TOTV
+    bcc bar_ld_o
+    lda.l TOTV
+    sta.l LAPV
+bar_ld_o:
+    ldx #0
+    lda.l LAPV
+    jsr bar_lc_num
+    lda #$2CBA                  ; the slash
+    sta.l LCB,x
+    inx
+    inx
+    lda.l TOTV
+    jsr bar_lc_num
+    txa
+    sta.l LCN
+    pla
+    sta.l $002116
+    lda #10
+    sec
+    sbc.l LCN                   ; blank cells in front = 5 - cells
+    lsr a
+    tax
+    beq bar_ld_w
+bar_ld_b:
+    lda #0
+    sta.l $002118
+    dex
+    bne bar_ld_b
+bar_ld_w:
+    ldx #0
+bar_ld_l:
+    txa
+    cmp.l LCN
+    bcs bar_ld_x
+    lda.l LCB,x
+    sta.l $002118
+    inx
+    inx
+    bra bar_ld_l
+bar_ld_x:
+    rts
+
+bar_lc_num:                     ; A = number (< 100), X = index into LCB: appends its digits as tile words, X advances
+    ldy #0
+bar_ln_t:
+    cmp #10
+    bcc bar_ln_d
+    sbc #10
+    iny
+    bra bar_ln_t
+bar_ln_d:
+    pha
+    cpy #0
+    beq bar_ln_o
+    tya
+    clc
+    adc #$2CB0
+    sta.l LCB,x
+    inx
+    inx
+bar_ln_o:
+    pla
+    clc
+    adc #$2CB0
+    sta.l LCB,x
+    inx
+    inx
     rts
