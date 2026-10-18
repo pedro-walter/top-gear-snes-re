@@ -347,9 +347,9 @@ bs_sh:
     rts
 
 SBV     = $7FF8C0               ; scratch: glyph number while the shifted seed tiles are built
-SBB     = $7FF8D0               ; scratch: one 4bpp glyph tile (32 bytes)
+SBB     = $7FF8D0               ; scratch: offset of the glyph in seed_glyphs
 
-build_seed_tiles:               ; forced blank (main menu draw): the 16 hex digit glyphs of the small font (tiles $1B.. / $01..) shifted down
+build_seed_tiles:               ; main menu draw: the 16 hex digit glyphs of the small font (seed_glyphs) shifted down
                                 ; 4 lines into two tiles each: upper = BG1 tile $40+2v, lower = $41+2v (VRAM word $1400.., free), so the seed is
                                 ; vertically centred in the 16 line selector bar
     sep #$20
@@ -362,33 +362,12 @@ build_seed_tiles:               ; forced blank (main menu draw): the 16 hex digi
     sta.l SBV
 bst_g:
     lda.l SBV
-    cmp #10
-    bcs bst_l
-    clc
-    adc #$001B
-    bra bst_a
-bst_l:
-    sbc #9                      ; carry set: v - 10 + 1
-bst_a:
     asl a
     asl a
     asl a
     asl a
-    clc
-    adc #$1000
-    sta.l $002116
-    ldx #0
-bst_r:
-    sep #$20
-    lda.l $002139
-    sta.l SBB,x
-    lda.l $00213A
-    sta.l SBB+1,x
-    rep #$20
-    inx
-    inx
-    cpx #32
-    bcc bst_r
+    asl a
+    sta.l SBB                   ; offset of the glyph in seed_glyphs
     lda.l SBV
     asl a
     asl a
@@ -408,8 +387,10 @@ bst_u:                          ; upper tile: rows 0..3 empty, rows 4..7 = glyph
     sec
     sbc #4
     asl a
+    clc
+    adc.l SBB
     tax
-    lda.l SBB,x
+    lda.l seed_glyphs,x
     bra bst_uw
 bst_uz:
     lda #0
@@ -428,8 +409,10 @@ bst_d:                          ; lower tile: rows 0..3 = glyph rows 4..7, rows 
     clc
     adc #4
     asl a
+    clc
+    adc.l SBB
     tax
-    lda.l SBB,x
+    lda.l seed_glyphs,x
     bra bst_dw
 bst_dz:
     lda #0
@@ -448,6 +431,41 @@ bst_dw:
     sta $4200                   ; NMI + joypad again
     rep #$20
     rts
+
+seed_glyphs:                    ; the 16 hex digit glyphs of the game's small font (4bpp tiles, 32 bytes each, 0..F; copied from the
+                                ; font in VRAM: it is not loaded yet when the menu comes back from a race)
+    .db $3C,$02,$66,$19,$46,$31,$C6,$21,$C6,$21,$CC,$23,$78,$86,$00,$3C
+    .db $02,$00,$19,$00,$31,$00,$21,$00,$21,$00,$23,$00,$86,$00,$3C,$00   ; '0'
+    .db $18,$04,$38,$04,$18,$04,$30,$0C,$30,$08,$60,$18,$60,$10,$00,$70
+    .db $04,$00,$04,$00,$04,$00,$0C,$00,$08,$00,$18,$00,$10,$00,$70,$00   ; '1'
+    .db $3C,$02,$66,$19,$66,$11,$0C,$73,$38,$06,$70,$0C,$FC,$02,$00,$FE
+    .db $02,$00,$19,$00,$11,$00,$73,$00,$06,$00,$0C,$00,$02,$00,$FE,$00   ; '2'
+    .db $3C,$02,$66,$19,$06,$71,$1C,$03,$0C,$12,$CC,$02,$78,$86,$00,$7C
+    .db $02,$00,$19,$00,$71,$00,$03,$00,$12,$00,$02,$00,$86,$00,$7C,$00   ; '3'
+    .db $1E,$01,$36,$09,$64,$13,$CC,$32,$FE,$01,$18,$E7,$18,$04,$00,$1C
+    .db $01,$00,$09,$00,$13,$00,$32,$00,$01,$00,$E7,$00,$04,$00,$1C,$00   ; '4'
+    .db $3E,$01,$30,$0F,$70,$08,$7C,$02,$06,$79,$CE,$01,$7C,$83,$00,$7E
+    .db $01,$00,$0F,$00,$08,$00,$02,$00,$79,$00,$01,$00,$83,$00,$7E,$00   ; '5'
+    .db $1C,$02,$36,$09,$60,$1F,$7C,$02,$E6,$19,$CE,$31,$7C,$83,$00,$7E
+    .db $02,$00,$09,$00,$1F,$00,$02,$00,$19,$00,$31,$00,$83,$00,$7E,$00   ; '6'
+    .db $7C,$02,$0C,$72,$18,$06,$30,$0C,$70,$08,$E0,$18,$E0,$10,$00,$F0
+    .db $02,$00,$72,$00,$06,$00,$0C,$00,$08,$00,$18,$00,$10,$00,$F0,$00   ; '7'
+    .db $1C,$02,$36,$09,$66,$19,$7E,$01,$EC,$13,$CC,$22,$78,$86,$00,$7C
+    .db $02,$00,$09,$00,$19,$00,$01,$00,$33,$00,$22,$00,$86,$00,$7C,$00   ; '8'
+    .db $3C,$02,$66,$19,$66,$11,$3E,$41,$0C,$33,$CC,$02,$78,$86,$00,$7C
+    .db $02,$00,$19,$00,$11,$00,$41,$00,$33,$00,$02,$00,$86,$00,$7C,$00   ; '9'
+    .db $1C,$02,$3E,$01,$36,$09,$66,$19,$7E,$01,$C6,$39,$C6,$21,$00,$E7
+    .db $02,$00,$01,$00,$09,$00,$19,$00,$01,$00,$39,$00,$21,$00,$E7,$00   ; 'A'
+    .db $3C,$02,$36,$09,$66,$11,$7C,$03,$EC,$12,$CC,$22,$F8,$06,$00,$FC
+    .db $02,$00,$19,$00,$11,$00,$03,$00,$32,$00,$22,$00,$06,$00,$FC,$00   ; 'B'
+    .db $1C,$02,$36,$09,$60,$1F,$60,$10,$C0,$30,$CC,$22,$F8,$06,$00,$FC
+    .db $02,$00,$09,$00,$1F,$00,$10,$00,$30,$00,$22,$00,$06,$00,$FC,$00   ; 'C'
+    .db $3C,$02,$36,$09,$66,$11,$66,$11,$EC,$03,$CC,$22,$F8,$06,$00,$FC
+    .db $02,$00,$09,$00,$11,$00,$11,$00,$23,$00,$22,$00,$06,$00,$FC,$00   ; 'D'
+    .db $3E,$01,$30,$0F,$60,$18,$78,$04,$C0,$3C,$C0,$20,$FC,$02,$00,$FE
+    .db $01,$00,$0F,$00,$18,$00,$04,$00,$3C,$00,$20,$00,$02,$00,$FE,$00   ; 'E'
+    .db $3E,$01,$30,$0F,$60,$18,$78,$04,$E0,$1C,$C0,$30,$C0,$20,$00,$E0
+    .db $01,$00,$0F,$00,$18,$00,$04,$00,$1C,$00,$30,$00,$20,$00,$E0,$00   ; 'F'
 
 draw_seed_row:                  ; main menu: "xxxxxxxx" after the label SEED, in two rows of the shifted tiles (see build_seed_tiles)
     lda #$0E0E                  ; x=14, y=14

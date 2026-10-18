@@ -24,10 +24,10 @@ BAR_W   = 200                   ; start line -> finish line (tile column 28)
 BAR_Y1  = 105                   ; sprite y of the player 1 lane (art row 0 -> scan line 106)
 BAR_YL  = 106                   ; leader lane (line 107)
 BAR_Y2  = 107                   ; player 2 lane (line 108)
-LCB     = $7FF900               ; scratch: the lap counter cells (up to 5 words)
-LAPV    = $7FF910               ; scratch: lap shown
-TOTV    = $7FF912               ; scratch: laps of the race
-LCN     = $7FF914               ; scratch: bytes in LCB
+LCB     = $7FF900               ; scratch: the lap counter cells (up to 9 words)
+LAPV    = $7FF920               ; scratch: lap shown
+TOTV    = $7FF922               ; scratch: laps of the race
+LCN     = $7FF924               ; scratch: bytes in LCB
 
 BAR_ATTR = $001FB2              ; the leader's tile | attribute word (unused lap-record RAM in the race)
 
@@ -86,7 +86,7 @@ bar_hb_d:
     inx
     cpx #32
     bcc bar_hb_d
-    lda #$0B00                  ; BG1 tiles $B0..$BA: the lap counter font (digits, slash)
+    lda #$0B00                  ; BG1 tiles $B0..$BD: the lap counter font (digits, slash, L A P)
     sta.l $002116
     ldx #0
 bar_hb_f:
@@ -94,7 +94,7 @@ bar_hb_f:
     sta.l $002118
     inx
     inx
-    cpx #352
+    cpx #448
     bcc bar_hb_f
     lda #$0DA0
     sta.l $002116
@@ -261,33 +261,39 @@ bar_px_z:
     lda #0
     rts
 
-; 4bpp tiles $B0..$BA (tools/lapfont.py): digits 0-9 and '/', white with a black outline, palette 3 of BG1
+; 4bpp tiles $B0..$BD (tools/lapfont.py): digits 0-9, '/', L, A, P in the style of the timer font (white, black outline), palette 3 of BG1
 bar_font:
-    .db $00,$7C,$38,$C6,$44,$BA,$44,$AA,$44,$AA,$44,$BA,$38,$C6,$00,$7C   ; '0'
+    .db $00,$FF,$7E,$81,$7E,$81,$66,$99,$66,$99,$7E,$81,$7E,$81,$00,$FF   ; '0'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$38,$10,$68,$30,$48,$10,$68,$10,$28,$10,$6C,$38,$44,$00,$7C   ; '1'
+    .db $00,$7C,$38,$C4,$78,$84,$18,$E4,$18,$E7,$7E,$81,$7E,$81,$00,$FF   ; '1'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$7C,$38,$C6,$44,$BA,$08,$F6,$10,$6C,$20,$DE,$7C,$82,$00,$FE   ; '2'
+    .db $00,$FE,$7C,$83,$7E,$81,$0E,$F1,$3C,$C3,$78,$87,$7E,$81,$00,$FF   ; '2'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$7C,$38,$C6,$44,$BA,$18,$E6,$04,$FA,$44,$BA,$38,$C6,$00,$7C   ; '3'
+    .db $00,$FE,$7C,$83,$7E,$81,$1E,$E1,$1E,$E1,$7E,$81,$7C,$83,$00,$FE   ; '3'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$1C,$08,$34,$18,$64,$28,$D4,$48,$B6,$7C,$82,$08,$F6,$00,$1C   ; '4'
+    .db $00,$FF,$66,$99,$66,$99,$7E,$81,$7E,$81,$06,$F9,$06,$09,$00,$0F   ; '4'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$FE,$7C,$82,$40,$BE,$78,$86,$04,$FA,$44,$BA,$38,$C6,$00,$7C   ; '5'
+    .db $00,$FF,$7E,$81,$7E,$81,$7C,$83,$0E,$F1,$7E,$81,$7C,$83,$00,$FE   ; '5'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$3C,$18,$64,$20,$DC,$78,$86,$44,$BA,$44,$BA,$38,$C6,$00,$7C   ; '6'
+    .db $00,$7E,$3C,$C2,$70,$8E,$7C,$83,$7E,$81,$66,$99,$3C,$C3,$00,$7E   ; '6'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$FE,$7C,$82,$04,$FA,$08,$36,$10,$6C,$20,$58,$20,$50,$00,$70   ; '7'
+    .db $00,$FF,$7E,$81,$7E,$81,$0E,$F1,$1C,$63,$38,$46,$38,$44,$00,$7C   ; '7'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$7C,$38,$C6,$44,$BA,$38,$C6,$44,$BA,$44,$BA,$38,$C6,$00,$7C   ; '8'
+    .db $00,$7E,$3C,$C3,$66,$99,$3C,$C3,$66,$99,$66,$99,$3C,$C3,$00,$7E   ; '8'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$7C,$38,$C6,$44,$BA,$3C,$C2,$04,$7A,$08,$76,$30,$4C,$00,$78   ; '9'
+    .db $00,$7E,$3C,$C3,$66,$99,$7E,$81,$3E,$C1,$0E,$71,$3C,$43,$00,$7E   ; '9'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$0E,$04,$1A,$08,$36,$10,$2C,$10,$68,$20,$D8,$40,$B0,$00,$E0   ; '/'
+    .db $00,$0F,$06,$19,$0E,$31,$1C,$23,$1C,$62,$38,$C6,$70,$8C,$00,$F8   ; '/'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$F0,$60,$90,$60,$90,$60,$90,$60,$9F,$7E,$81,$7E,$81,$00,$FF   ; 'L'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$7E,$3C,$C3,$7E,$81,$66,$99,$7E,$81,$66,$99,$66,$99,$00,$FF   ; 'A'
+    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$FE,$7C,$83,$7E,$81,$66,$99,$7C,$83,$60,$9E,$60,$90,$00,$F0   ; 'P'
     .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
-; ---- lap counters: "lap/laps" right aligned in tile columns 25..29 of the row under each timer (rows 5 and 19; the fuel gauge is column 30
-; and starts a row lower) -------------------------------------------------------------------------------------------------------
+; ---- lap counters: "LAP lap/laps" right aligned to tile column 29 of the row under each timer (rows 5 and 19; the fuel gauge is column 30
+; and starts a row lower; "LAP 3/7" is as wide as the timer, columns 23..29) -------------------------------------------------------------------------------------------------------
 ; $1E76 / $1E78 = laps completed by player 1 / player 2 (the computer in one player mode): $FFFF while the car is still behind the line
 ; of lap 1; the lap shown is that + 1 (at least 1, at most the number of laps).
 hook_lapctr:
@@ -297,10 +303,10 @@ hook_lapctr:
     sta.l $002115               ; VMAIN: word increment
     rep #$20
     lda.l $001E76
-    ldx #$0CB9                  ; $0C00 + 5 * 32 + 25
+    ldx #$0CB5                  ; $0C00 + 5 * 32 + 21 (first of 9 cells)
     jsr bar_lc_draw
     lda.l $001E78
-    ldx #$0E79                  ; $0C00 + 19 * 32 + 25
+    ldx #$0E75                  ; $0C00 + 19 * 32 + 21
     jsr bar_lc_draw
     rep #$30
     lda.l $001E5A               ; the instruction this hook replaces: the caller branches on its flags
@@ -322,7 +328,15 @@ bar_ld_p:
     lda.l TOTV
     sta.l LAPV
 bar_ld_o:
-    ldx #0
+    lda #$2CBB                  ; L
+    sta.l LCB
+    lda #$2CBC                  ; A
+    sta.l LCB+2
+    lda #$2CBD                  ; P
+    sta.l LCB+4
+    lda #0
+    sta.l LCB+6                 ; blank
+    ldx #8
     lda.l LAPV
     jsr bar_lc_num
     lda #$2CBA                  ; the slash
@@ -335,9 +349,9 @@ bar_ld_o:
     sta.l LCN
     pla
     sta.l $002116
-    lda #10
+    lda #18
     sec
-    sbc.l LCN                   ; blank cells in front = 5 - cells
+    sbc.l LCN                   ; blank cells in front = 9 - cells
     lsr a
     tax
     beq bar_ld_w
