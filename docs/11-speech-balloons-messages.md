@@ -54,7 +54,11 @@ Verified by forcing `$0118` in a race (index = id + 30):
 | 14 | FASTER DUDE! | 24 | &*#@!! (cursing) |
 | 15 | LET'S GO! | | |
 
-Ids 6, 9, 14, 16 and 17 are never produced by any trigger below (unused text, 9 has no artwork).
+Ids 6, 9, 14, 16 and 17 are never produced by any trigger below. They are leftover content: 6, 14, 16 and 17 are complete, normal-looking bubbles (`I'M GONNA GET YOU!`, `FASTER DUDE!`, `CRASH N'BURN`, `CRUSIN' MAN`), id 9 shows nothing at all (its tilemap is drawn but no bubble artwork appeared at any point of its display window; the graphics stream `06:DE1A` was not inspected).
+
+![unused balloons, ids 6 9 14 16 17](img/balloons_unused_ids.png)
+
+Each bubble appears at a fixed spot in the player's view (upper middle, above the car); the cars next to it in the picture are just bots passing by. The picture is a 4x nearest-neighbour crop of in-game frames (order: 6, 9 / 14, 16 / 17).
 
 ## What triggers a balloon
 
