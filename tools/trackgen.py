@@ -254,6 +254,7 @@ def expand_objs(recs, diff):
             else: words.append(d_ | low)
     return words
 
+ESS = set()                              # slots of hazard objects (never removed by fit_pool)
 def hz_put(t, objs, j, typ, side, lat):
     """Hazard object at slot j unless the slot holds a sign, group or pit object or lies near the gantry / pit."""
     L, pp = t['L'], t['pitpiece']
@@ -262,6 +263,7 @@ def hz_put(t, objs, j, typ, side, lat):
     w = objs[j]
     if w & 0x8000 or (w and (w >> 9) & 63 in (8, 9, 13, 58)): return
     objs[j] = (typ << 9) | (side << 8) | lat
+    ESS.add(j)
 
 def edge_at(t, scen, j, side):
     sw = (W(0, 0xDEE4 + 2 * t['env']) & 0x71FF) | t['roadw']
@@ -339,10 +341,56 @@ def add_chevrons(t, curve, objs, scen, SLOPE_):
         for j in list(range(WIN)) + list(range(L * 32 - WIN, L * 32)):
             w = objs[j]
             if w and not w & 0x8000 and (w >> 9) & 63 == DROPW[t['env']]: objs[j] = 0
+    fit_pool(t, objs)
     for i in range(64):                                  # pieces L, L+1 are copies of 0, 1
         objs[L * 32 + i] = objs[i]
 
+
+# ---------------------------------------------------------------- graphics pool ---------------------------------
+# The roadside scanner (00:E20D) loads the graphics of every object type that comes into view into an 8 KB VRAM pool (256 units
+# of 32 bytes, sizes at 00:E888 + 4 * graphic id), first fit by address; blocks are freed when the camera has passed the last object
+# of the type.  The start gantry alone needs 254 units, and mixed types fragment the pool: whatever does not fit is skipped and
+# its objects are drawn with garbled tiles.  The original tracks avoid it by hand (and still show a few glitches); the shuffled
+# pieces plus hazards, signs and trees do not.  So (measured with a model of the allocator, docs/10):
+#  * nothing but the gantry within 44 slots before and 42 slots after the finish line, and
+#  * every track uses one set of graphics that fits the pool altogether: gantry-independent essentials first (groups, turn signs,
+#    pit flags / entrance), then the hazards' type, then the ordinary types by frequency (first appearance breaks ties).
+#    Objects of the other types are removed.
+POOL = 224                                 # 256 units, minus a margin: first fit fragments (measured: 224 leaves no garble in 1000 seeds, 232 and above does)
+ZONE_BEFORE, ZONE_AFTER = 44, 42
+GANTRY_ID = 10
+def gfx_id(w):
+    return W(0, 0xE9BA + ((w >> 9) & 63) * 2) & 0xFF
+def gfx_ids(w):
+    """Graphic ids of an object word (a group object expands to the ids of its parts)."""
+    if w == 0: return ()
+    if w & 0x8000:
+        y = W(0, 0xE888 + (w & 0x3FFE))
+        return tuple(W(0, 0xE89A + y + 2 * (k + 1)) for k in range(W(0, 0xE89A + y)))
+    return (gfx_id(w),)
+def gfx_units(i): return W(0, 0xE888 + i * 4)
+def fit_pool(t, objs):
+    n = t['L'] * 32
+    for j in list(range(ZONE_AFTER)) + list(range(n - ZONE_BEFORE, n)):
+        if objs[j] and not objs[j] & 0x8000: objs[j] = 0
+    sel = set(); hz = {}; cnt = {}
+    for j in range(n):
+        w = objs[j]
+        if not w: continue
+        if w & 0x8000 or (w >> 9) & 63 in (8, 9, 13, 21, 58): sel.update(gfx_ids(w))
+        elif j in ESS: i = gfx_id(w); hz[i] = hz.get(i, 0) + 1
+        else: i = gfx_id(w); cnt[i] = cnt.get(i, 0) + 1
+    tot = sum(gfx_units(i) for i in sel if i != GANTRY_ID)
+    for grp in (hz, cnt):
+        for i, c in sorted(grp.items(), key=lambda x: -x[1]):
+            if i not in sel and tot + gfx_units(i) <= POOL:
+                sel.add(i); tot += gfx_units(i)
+    for j in range(n):
+        w = objs[j]
+        if w and not w & 0x8000 and gfx_id(w) not in sel: objs[j] = 0
+
 def tables(t, diff=1):
+    ESS.clear()
     curve = expand_curve(t['curve']); objs = expand_objs(t['recs'], diff)
     scen = expand_scen(t['scen'])
     slope = expand_slope(t['slope'])

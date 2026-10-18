@@ -68,6 +68,18 @@ HK      = $F892
 HM      = $F894
 HBASE   = $F896
 HLEFT   = $F898
+FPA     = $F89A         ; fit_pool: graphic id
+FPT     = $F89C         ;   pool units taken by the selected graphics
+FPG     = $F89E         ;   scratch (type * 2, group part counter)
+FPE     = $F8A0         ;   2 * slots per lap
+PTO     = $F8A2         ;   tier offset into CNT / FIR: 0 = hazards, $50 = ordinary objects
+PBC     = $F8A4         ;   best count
+PBF     = $F8A6         ;   its first appearance
+PBI     = $F8A8         ;   its graphic id
+KEEP    = $3400         ; 7F:3400..3FFF  one word per slot: 1 = hazard object (set by hz_put)
+GCN     = $4000         ; 7F:4000..    per graphic id (even): objects of it, hazards ($4000) / ordinary ($4050)
+GFI     = $40A0         ;   first slot offset + 1 of it, same layout
+GSE     = $4140         ;   per graphic id: 1 = graphics selected for this track (7F:4000..418F cleared)
 ROADW   = $F87C         ; replacement bits for 00:DEE4[env] (pit road style, bits 9-11 and 15), used by hook_style
 SLOPE   = $F000         ; 48 words
 CURVE   = $F080         ; 48 words
@@ -1273,6 +1285,8 @@ hp_w:
 hp_s:
     ora HLT
     sta.l $7E6400,x
+    lda #1
+    sta KEEP,x                  ; hazards are never thinned out by fit_pool
 hp_r:
     rts
 
@@ -1882,7 +1896,8 @@ dw_n:
     dec T0
     bne dw_l
     rts
-ac_copy2:                       ; pieces L, L+1 are copies of 0, 1
+ac_copy2:                       ; thin the objects to the graphics pool, then pieces L, L+1 are copies of 0, 1
+    jsr fit_pool
     lda #$6400
     sta $1A
     lda #$007E
@@ -1900,6 +1915,226 @@ ac_c:
     iny
     cpx #128
     bne ac_c
+    rts
+
+; ---------------------------------------------------------------------------------------------------------
+; graphics pool (tools/trackgen.py fit_pool, docs/10): the roadside scanner 00:E20D loads the graphics of the object types in view
+; into a 256 unit VRAM pool (sizes at 00:E888 + 4 * id); types that do not fit are drawn garbled.  Nothing but the gantry within
+; 44 slots before / 42 after the line; the track then uses one set of graphics that fits the pool: groups, turn signs, pit
+; flags / entrance first, then the hazards' type, then the ordinary types by frequency (first appearance breaks ties).
+fit_pool:
+    lda LIM
+    asl a
+    sta FPE
+    ldx #0
+fz_a:                           ; slots 0..41
+    lda.l $7E6400,x
+    beq fz_an
+    bmi fz_an
+    lda #0
+    sta.l $7E6400,x
+fz_an:
+    inx
+    inx
+    cpx #84
+    bcc fz_a
+    lda FPE
+    sec
+    sbc #88                     ; slot LIM-44
+    tax
+fz_b:
+    lda.l $7E6400,x
+    beq fz_bn
+    bmi fz_bn
+    lda #0
+    sta.l $7E6400,x
+fz_bn:
+    inx
+    inx
+    cpx FPE
+    bcc fz_b
+    ldx #0
+    lda #0
+fz_c:
+    sta GCN,x
+    inx
+    inx
+    cpx #$0190
+    bne fz_c
+    ldx #0
+fc_l:                           ; count the types
+    lda.l $7E6400,x
+    beq fc_n
+    bpl fc_o
+    phx                         ; group object: its graphics are selected
+    and #$3FFE
+    tax
+    lda.l $00E888,x
+    tax
+    lda.l $00E89A,x
+    sta FPG
+fc_g:
+    inx
+    inx
+    lda.l $00E89A,x
+    tay
+    lda #1
+    sta GSE,y
+    dec FPG
+    bne fc_g
+    plx
+    bra fc_n
+fc_o:
+    xba
+    and #$007E
+    sta FPG                     ; type * 2
+    phx
+    ldx FPG
+    lda.l $00E9BA,x
+    and #$00FF
+    sta FPA                     ; graphic id
+    plx
+    lda FPG
+    cmp #16
+    beq fc_t1                   ; type 8, 9: turn signs
+    cmp #18
+    beq fc_t1
+    cmp #26
+    beq fc_t1                   ; 13: pit flag
+    cmp #42
+    beq fc_t1                   ; 21, 58: pit entrance
+    cmp #116
+    beq fc_t1
+    ldy FPA
+    lda KEEP,x
+    bne fc_cnt                  ; hazard
+    tya
+    clc
+    adc #$50
+    tay
+fc_cnt:
+    lda GCN,y
+    bne fc_inc
+    txa
+    inc a
+    sta GFI,y                   ; first appearance
+    lda #0
+fc_inc:
+    inc a
+    sta GCN,y
+    bra fc_n
+fc_t1:
+    ldy FPA
+    lda #1
+    sta GSE,y
+fc_n:
+    inx
+    inx
+    cpx FPE
+    bcc fc_l
+    stz FPT                     ; pool units of the always selected graphics (not the gantry)
+    ldy #0
+ft_l:
+    lda GSE,y
+    beq ft_n
+    cpy #10
+    beq ft_n
+    tya
+    asl a
+    asl a
+    tax
+    lda.l $00E888,x
+    clc
+    adc FPT
+    sta FPT
+ft_n:
+    iny
+    iny
+    cpy #80
+    bcc ft_l
+    stz PTO
+    jsr pal_tier
+    lda #$50
+    sta PTO
+    jsr pal_tier
+    ldx #0
+fr_l:                           ; remove the objects of the types that were not selected
+    lda.l $7E6400,x
+    beq fr_n
+    bmi fr_n
+    xba
+    and #$007E
+    sta FPG
+    phx
+    ldx FPG
+    lda.l $00E9BA,x
+    and #$00FF
+    tay
+    plx
+    lda GSE,y
+    bne fr_n
+    lda #0
+    sta.l $7E6400,x
+fr_n:
+    inx
+    inx
+    cpx FPE
+    bcc fr_l
+    rts
+
+pal_tier:                       ; select the most frequent types of the tier PTO while they fit the pool
+pt_pick:
+    stz PBC
+    ldy #0
+pt_l:
+    tya
+    clc
+    adc PTO
+    tax
+    lda GSE,y
+    bne pt_n
+    lda GCN,x
+    beq pt_n
+    cmp PBC
+    bcc pt_n
+    bne pt_b
+    lda GFI,x
+    cmp PBF
+    bcs pt_n
+pt_b:
+    lda GCN,x
+    sta PBC
+    lda GFI,x
+    sta PBF
+    sty PBI
+pt_n:
+    iny
+    iny
+    cpy #80
+    bcc pt_l
+    lda PBC
+    beq pt_done
+    ldy PBI
+    tya
+    clc
+    adc PTO
+    tax
+    lda #0
+    sta GCN,x                   ; handled
+    tya
+    asl a
+    asl a
+    tax
+    lda.l $00E888,x
+    clc
+    adc FPT
+    cmp #225
+    bcs pt_pick                 ; more than 224 units: skipped (256 minus a margin for the first fit's fragmentation)
+    sta FPT
+    lda #1
+    sta GSE,y
+    bra pt_pick
+pt_done:
     rts
 
 expand_all:
@@ -1921,6 +2156,14 @@ expand_all:
     jsr expand_stream
     jsr expand_scen
     jsr expand_objs
+    ldx #0                      ; no object is marked as kept yet
+    lda #0
+ka_l:
+    sta KEEP,x
+    inx
+    inx
+    cpx #$0C00
+    bne ka_l
     jsr add_chevrons
     rts
 

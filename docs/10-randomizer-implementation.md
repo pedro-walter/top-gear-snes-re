@@ -95,6 +95,37 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
   source (table `DROP` in trackgen.py / `dropt` in gen.asm). All 32 environments show the gantry (`out/ge_sheet.png`).
 * Seed roll mixes H/V counters and the old seed through 4 rounds of the RNG so every digit changes.
 
+## Graphics pool: garbled scenery (review round 4, 2026-10-17)
+User report: garbled start/finish gantry (seeds E3973884, 77675249), garbled roadside graphics near the finish / mid-lap / next to the big rocks
+(3142E2A7, B09742CB, FF6E4160, 82C31DDC) and garble "all around" where many trees show (84373410).
+
+**Cause.** The roadside scanner `00:E20D` runs every second frame and looks at the 4 slots 40..43 ahead of the camera. The graphic id of each
+object type (`00:E9BA[type]`; group objects expand through `00:E888 / E89A`) is loaded by DMA into an **8 KB VRAM pool = 256 units of 32 bytes**
+(size of id `i` = word at `00:E888 + 4 * i`; trees 34..184 units, chevrons 54, pit flags 58, **the start gantry 254**). Allocation is
+*first fit by address* in a list of at most 8 blocks; a block is freed when the camera has passed the last object of its type. A type that fits
+nowhere is skipped (`00:E3BF`, counted by `scripts/rando_pool_probe.lua`) and, since a slot is only scanned for a few calls, its objects are drawn with
+whatever tiles happen to be in VRAM. Two things broke it in generated tracks: (1) the gantry needs the whole pool, so any object within ~43 slots before
+or ~41 after the line (random pieces 1 and L-1 have trees) leaves it no room, or the neighbours cannot load; (2) shuffled pieces + hazards + chevrons + trees
+mix many types and the pool fragments (a 142-unit tree needs a free 142-unit hole; total free space is not enough). The original tracks avoid most of it by hand
+(and still glitch briefly in a few places: `tools/pool_model.py --orig`).
+
+**Model** (`tools/pool_model.py`): camera moves one slot per step, same list / first fit / expiry rules. It reproduces the emulator: seed 3142E2A7 failed loads
+at camera slots 709, 1061, 1205 in both; E3973884 at 1269 (emulator bucket 1264); original track 3 glitches at 663-667 (emulator: 656).
+`garble` = objects within 40 slots of the camera whose graphics are not loaded.
+
+**Fix** (`fit_pool` in trackgen.py, `fit_pool` / `pal_tier` in gen.asm, run last in `add_chevrons`, before the wrap copy):
+1. Only the gantry within 44 slots before and 42 slots after the finish line (every other non-group object there is removed).
+2. One graphics set per track that fits the pool *altogether* (all types of the lap, so nothing ever has to be evicted): first the always-needed ones
+   (group objects, turn signs 8/9, pit flags 13, pit entrance 21/58; the gantry's id 10 is not counted, nothing else is near it), then the hazard type (marked in
+   the `KEEP` word array by `hz_put`), then the ordinary types by how many objects use them (first appearance breaks ties) while the sum stays <= 224 units (256 minus a margin for the first fit's fragmentation: 224 left no garble in 1000 seeds of the model, 232 left some, 256 about 1 seed in 30 - always around the pit).
+   Objects of unselected types are removed (about 27% of the objects, whole types of the shuffled source pieces; hazards of a type that does not fit next to chevrons and pit
+   graphics are dropped rather than shown garbled).
+Scratch: `KEEP` 7F:3400.., counters 7F:4000..418F, variables F89A..F8A9. Cost: about 130k CPU cycles on top of 740k for the rest of the generator.
+
+**Result.** Model, 1000 random seeds: no garbled camera slot at all (before: 40 of 60 seeds, about 130 slots each; with 256 units instead of 224: 5 of 300 seeds, in the pit area).
+Emulator (`scripts/rando_pool_probe.lua`, failed-load counter over a lap): the seven reported seeds went from 9..141 failed loads to 0, as did 7 other seeds;
+the three seeds the 256-unit version still failed (BC095D63, 5A40D714, 8441E20C) are clean with 224. A first attempt, thinning objects whenever the sum of distinct types in a 79-slot window exceeded 256 units, was not enough (fragmentation) and was dropped.
+
 ## Roadside scenery fill (review round 3)
 Environments whose original track is sparse got empty roadsides. After the turn signs, `add_chevrons` (both generators) fills every
 8th empty slot (from slot 52, never within 48 slots of the gantry, never at the pit pieces or the last piece) with a tree/bush,
