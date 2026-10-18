@@ -674,3 +674,32 @@ ps_roll:
 
 .org $0F9242
     jml hook_lr                 ; was: LDA $5A / BNE $922F
+
+; ---- title screen text (0F:8ED3 draws the list at $AFC6: entries = x column, y row, pixel offset x, y, text, 0; end = word 0) ---------------
+; The new list has longer lines, so it lives in an unused stretch of bank $0F (never read in the menus or a race) and the LDX operand points to it.
+; The copyright line of Gremlin Graphics is kept; the Nintendo licence and the Kemco lines are replaced.
+.org $0F8ED4
+    .dw $FB62
+.org $0FFB62
+    .db 3,26,2,0,$3F," 1991 GREMLIN GRAPHICS LTD",0
+    .db 8,24,3,4,"POWERED BY CLAUDE",0           ; 17 chars, centred on pixel 135 like the original lines
+    .db 11,20,2,2,"PRESS START",0
+    .db 3,22,7,6,"RANDOMIZER BY PEDRO WALTER",0   ; 26 chars
+    .dw 0
+; The OAM buffer (128 sprites, text starts at sprite 56) cannot hold one sprite per character of the longer lines (81 with spaces, the original
+; list had 70), so spaces no longer emit a sprite: the pending x of the next glyph just moves on by 8.  The loop at 0F:8EDC that
+; adds $60 to the tile words counts the glyph sprites (71 now, was 70).
+.org $0F9EFB                    ; was: LDA #$0100 / BNE loc_0F9F0C (space: carry is clear here, M = 16 bit)
+    jmp $FBD0
+    nop
+    nop
+.org $0F8EDD
+    .dw $0046
+.org $0FFBD0
+    lda $0202,y
+    clc
+    adc #$0008
+    sta $0202,y
+    lda #0
+    sep #$20
+    jmp $9EEE                   ; next character

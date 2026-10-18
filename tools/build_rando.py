@@ -14,6 +14,19 @@ def fix_header(rom):
     c = s ^ 0xFFFF
     rom[0x7FDC] = c & 0xFF; rom[0x7FDD] = c >> 8
 
+def purple_title(rom):
+    """Title screen sky: the HDMA colour table (224 words, 0D:C7FA and 0D:C8DA, blue gradient) gets red added in proportion to the
+    blue so the sky turns violet."""
+    for base in (0x6C7FA, 0x6C8DA):
+        for i in range(112):
+            o = base + 2 * i
+            w = rom[o] | rom[o + 1] << 8
+            r, g, b = w & 31, (w >> 5) & 31, (w >> 10) & 31
+            r = min(31, r + (b * 11 + 10) // 20)
+            g = g * 2 // 3
+            w = r | g << 5 | b << 10
+            rom[o], rom[o + 1] = w & 255, w >> 8
+
 def build(harness=False, root='.'):
     path = os.environ.get('TOPGEAR_ROM', 'Top Gear (USA).sfc')
     rom = bytearray(open(path, 'rb').read())
@@ -28,6 +41,7 @@ def build(harness=False, root='.'):
             text += bigfont.asm()
     a = Asm(rom)
     a.assemble(text, 'src/' + '+'.join(names))
+    purple_title(rom)
     fix_header(rom)
     return rom, a
 
