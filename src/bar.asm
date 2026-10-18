@@ -261,15 +261,15 @@ bar_px_z:
     lda #0
     rts
 
-; 4bpp tiles $B0..$B2 (tools/lapfont.py): L, P, '/' in the style of the timer font (white, black outline), palette 3 of BG1; the digits are the HUD's
+; 4bpp tiles $B0..$B2 (tools/lapfont.py): L, P, '/' drawn like the timer font's R (same colours), palette 3 of BG1; the digits are the HUD's
 ; tiles $35.. (the timer's) and the A is $4B
 bar_font:
-    .db $00,$F0,$60,$90,$60,$90,$60,$90,$60,$9F,$7E,$81,$7E,$81,$00,$FF   ; 'L'
-    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$FE,$7C,$83,$7E,$81,$66,$99,$7C,$83,$60,$9E,$60,$90,$00,$F0   ; 'P'
-    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-    .db $00,$0F,$06,$19,$0E,$31,$1C,$23,$1C,$62,$38,$C6,$70,$8C,$00,$F8   ; '/'
-    .db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .db $00,$00,$00,$E0,$10,$90,$10,$90,$10,$90,$02,$82,$03,$83,$7E,$7E   ; 'L'
+    .db $00,$00,$00,$E0,$60,$F0,$60,$F0,$60,$F0,$7C,$FE,$7C,$FF,$00,$7E
+    .db $00,$00,$00,$F8,$02,$82,$19,$99,$03,$83,$1E,$9E,$10,$90,$30,$30   ; 'P'
+    .db $00,$00,$00,$F8,$7C,$FE,$66,$FF,$7C,$FF,$60,$FE,$60,$F0,$00,$30
+    .db $00,$00,$00,$1C,$02,$12,$04,$24,$04,$24,$08,$48,$08,$48,$30,$30   ; '/'
+    .db $00,$00,$00,$1C,$0C,$1E,$18,$3C,$18,$3C,$30,$78,$30,$78,$00,$30
 
 ; ---- lap counters: "LAP lap/laps" right aligned to tile column 29 of the row under each timer (rows 5 and 19; the fuel gauge is column 30
 ; and starts a row lower; "LAP 3/7" is as wide as the timer, columns 23..29) -------------------------------------------------------------------------------------------------------

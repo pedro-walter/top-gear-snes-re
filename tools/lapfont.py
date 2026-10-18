@@ -1,28 +1,42 @@
 #!/usr/bin/env python3
-"""Generates the 4bpp BG1 tiles L, P and '/' of the lap counter as .db lines for src/bar.asm (the digits and the A are the HUD font's own
-tiles $35..$3E and $4B, the timer's; the HUD font has no L, P or slash).
-6x6 glyphs (2 pixel strokes, like the timer font) at (1,1) of the 8x8 tile, colour 1 (white) with a one pixel colour 2 (black) outline: readable over the road and the grass."""
+"""Generates the 4bpp BG1 tiles L, P and '/' of the lap counter as .db lines for src/bar.asm.  The digits and the A of the counter are the HUD font's
+own tiles ($35..$3E and $4B, the timer's); that font has no L, P or slash, so these are drawn like its R (palette 3 of BG1: a = $A light edge on the top / left,
+c = $C fill, b = $B dark edge on the bottom / right)."""
 G = {
- 'L': ["110000","110000","110000","110000","111111","111111"],
- 'P': ["111110","111111","110011","111110","110000","110000"],
- '/': ["000011","000111","001110","001110","011100","111000"],
+ 'L': ["00000000",
+       "aaa00000",
+       "accb0000",
+       "accb0000",
+       "accb0000",
+       "acccccb0",
+       "acccccbb",
+       "0bbbbbb0"],
+ 'P': ["00000000",
+       "aaaaa000",
+       "acccccb0",
+       "accbbccb",
+       "acccccbb",
+       "accbbbb0",
+       "accb0000",
+       "00bb0000"],
+ '/': ["00000000",
+       "000aaa00",
+       "000accb0",
+       "00accb00",
+       "00accb00",
+       "0accb000",
+       "0accb000",
+       "00bb0000"],
 }
 def tile(g):
-    px = [[0]*8 for _ in range(8)]
+    out = [0]*32
     for y, row in enumerate(g):
-        for x, c in enumerate(row):
-            if c == '1': px[y+1][x+1] = 1
-    for y in range(8):
-        for x in range(8):
-            if px[y][x] == 0 and any(px[y+dy][x+dx] == 1 for dy in (-1,0,1) for dx in (-1,0,1)
-                                      if 0 <= y+dy < 8 and 0 <= x+dx < 8):
-                px[y][x] = 2
-    out = []
-    for y in range(8):
-        p0 = sum(((px[y][x] & 1) << (7-x)) for x in range(8))
-        p1 = sum((((px[y][x] >> 1) & 1) << (7-x)) for x in range(8))
-        out += [p0, p1]
-    return out + [0]*16
+        for x, ch in enumerate(row):
+            c = int(ch, 16)
+            for pl in range(4):
+                if (c >> pl) & 1:
+                    out[(pl // 2) * 16 + 2 * y + (pl % 2)] |= 0x80 >> x
+    return out
 for k in "LP/":
     b = tile(G[k])
     print("    .db " + ",".join("$%02X" % v for v in b[:16]) + "   ; '" + k + "'")
