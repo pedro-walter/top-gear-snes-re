@@ -14,6 +14,19 @@ def fix_header(rom):
     c = s ^ 0xFFFF
     rom[0x7FDC] = c & 0xFF; rom[0x7FDD] = c >> 8
 
+VERSION = 'BETA 0.1'          # shown on the title screen
+
+def title_lines():
+    """(.db lines of the title text list, number of glyph sprites).  Lines are centred on pixel 135 like the original ones;
+    entry = column, row, pixel offset x, y, text, 0; the list ends with a zero word.  Spaces do not take a sprite (see hooks.asm)."""
+    rows = [('POWERED BY CLAUDE', 24, 4), ('PRESS START', 20, 2), ('RANDOMIZER BY PEDRO WALTER', 22, 6), ('VERSION ' + VERSION, 26, 0)]
+    out, glyphs = [], 0
+    for text, row, dy in rows:
+        x = 135 - 4 * len(text)
+        out.append('    .db %d,%d,%d,%d,"%s",0' % (x >> 3, row, x & 7, dy, text.replace('.', '=')))    # the list's code for '.' is '=' (sprite tile $88)
+        glyphs += len(text.replace(' ', ''))
+    return '\n'.join(out) + '\n    .dw 0', glyphs
+
 def purple_title(rom):
     """Title screen sky: the HDMA colour table (224 words, 0D:C7FA and 0D:C8DA, blue gradient) gets red added in proportion to the
     blue so the sky turns violet."""
@@ -39,6 +52,8 @@ def build(harness=False, root='.'):
         if n == 'keypad.asm':
             import bigfont
             text += bigfont.asm()
+    lst, glyphs = title_lines()
+    text = text.replace('@TITLE_LIST@', lst.lstrip()).replace('@TITLE_GLYPHS@', str(glyphs))
     a = Asm(rom)
     a.assemble(text, 'src/' + '+'.join(names))
     purple_title(rom)
