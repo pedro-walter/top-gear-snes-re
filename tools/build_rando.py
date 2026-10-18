@@ -9,7 +9,7 @@ from asm65816 import Asm
 def fix_header(rom):
     rom[0x7FD7] = 0x0A                                   # 1 MB
     rom[0x7FDC:0x7FE0] = b'\0\0\0\0'
-    s = sum(rom) & 0xFFFF
+    s = (sum(rom) + 0x1FE) & 0xFFFF                      # the complement/checksum bytes count as their own sum (always 0x1FE)
     rom[0x7FDE] = s & 0xFF; rom[0x7FDF] = s >> 8
     c = s ^ 0xFFFF
     rom[0x7FDC] = c & 0xFF; rom[0x7FDD] = c >> 8
