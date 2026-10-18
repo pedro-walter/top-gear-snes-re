@@ -40,3 +40,16 @@ Flat road, throttle held, full tank, one 2.4 km lap from a standing start (model
 | same, every upshift at 70 % of the optimal speed | +0.05 / +0.2 / +0.3 s | -1 / -3 / -3 % |
 
 So the shift speeds hardly matter for fuel (the acceleration phase is short); the cruising gear does. White, purple and blue already cruise in 5th, which is both the fastest and the cheapest gear. Only the red car has a real choice: 4th (+2 s per 2.4 km, +33 % fuel) or 5th. One nitro costs 2700-3800 units (6-9 % of a tank) but covers about 0.35-0.40 km in 5.3 s, so its cost per km is 0.7-1.1 times the normal one.
+
+## Burning fuel on purpose (spare fuel at the finish)
+
+The fuel bonus is small: 1 unit of top speed per 64 units of fuel burned, +16 km/h for a whole tank. Holding a lower gear to burn faster only pays when that gear is not slower to begin with, which is true for the red car alone (its 4th beats its 5th). Model, flat road, full tank, throttle held, final gear held from a standing start:
+
+| car | top speed at 20 / 40 / 60 s, 5th | same, 4th | 4.8 km, 5th / 4th |
+|---|---|---|---|
+| white | 203 / 207 / 209 | 193 / 196 / 200 | 84.6 s / 88.4 s |
+| purple | 217 / 221 / 226 | 212 / 219 / 225 | 79.5 s / tank empty |
+| blue | 214 / 219 / 224 | 212 / 218 / 224 | 80.0 s / tank empty |
+| red | 219 / 227 / 236 | 232 / 240 (empty at 55 s) | 4th is faster |
+
+For white, 4th is 12 km/h slower. For purple and blue, 4th burns about 35 % more per second and only catches up with 5th at about 60 s, when its tank is almost empty (65 s / 70 s). So for these three cars staying in 5th is the best choice even with fuel to spare. The only other fuel burner is the nitro (2700-3800 units, about +1 km/h of top speed), which is used for its own boost anyway. Not tested in the game; km assume 40 ticks/s.
