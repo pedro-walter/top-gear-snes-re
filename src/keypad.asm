@@ -28,28 +28,29 @@ KP_PAD  = $1FD4
 
 .org $118000
 
-; ---- upload the hex digit glyphs (kp_gfx, 2 KB drawn by tools/bigfont.py) to VRAM tile 256.. (screen forced blank, NMI off meanwhile) ----
+; ---- upload the hex digit glyphs (kp_gfx, 3 KB drawn by tools/bigfont.py) to VRAM tile 256.. (screen forced blank, NMI off meanwhile) ----
 kp_build_glyphs:
     rep #$30
     sep #$20
-    stz $4200
+    lda #0
+    sta.l $004200
     lda #$80
-    sta $2100                   ; forced blank
-    sta $2115                   ; VMAIN: increment after the high byte
+    sta.l $002100               ; forced blank
+    sta.l $002115               ; VMAIN: increment after the high byte
     rep #$20
     lda #$2000
-    sta $2116
+    sta.l $002116
     ldx #0
 kb_up:
     lda.l kp_gfx,x
-    sta $2118
+    sta.l $002118
     inx
     inx
-    cpx #$0800
+    cpx #$0C00
     bcc kb_up
     sep #$20
     lda #$81
-    sta $4200                   ; NMI + joypad again
+    sta.l $004200               ; NMI + joypad again
     rep #$30
     rtl
 

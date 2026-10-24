@@ -24,6 +24,7 @@ MMT     = $7FFA0C               ; scratch
 MAGIC2  = $7FFA10               ; $5AA5 once the menu state below is initialised (WRAM is random at power-on; test scripts poke the seed magic only)
 TOTLO   = $7FFA20                ; low bytes of the scores of the 20 cars (bank $7F; abs addressing with DBR = $7F uses addr(TOTLO))
 TOTHI   = $7FFA40                ; high bytes
+MK_FIELD = (((6 + 6) * 32) + 5) * 2   ; buffer offset of the number field of the X TRACKS row (tile row ROW0 + 6, column 5)
 ROW0    = 6                     ; first menu row (tile row of the label's top half); rows are 3 tiles apart
 MM_ROWS = 6
 
@@ -42,7 +43,8 @@ mm_t_seed:  .db "SEED   ",0
 mm_t_kph:   .db "SPEED KPH",0
 mm_t_mph:   .db "SPEED MPH",0
 mm_t_play:  .db "PLAY GAME",0
-mm_t_trk:   .db "TRACK"
+mm_t_trks:  .db "TRACKS",0
+mm_t_trk1:  .db "TRACK ",0
 
 mm_pal_text:                    ; grey text palette -> palette shadow (BG palette 5)
     ldx #30
@@ -126,24 +128,16 @@ mm_rowy:                        ; A = menu row 0..5 -> A = tile row of its label
     adc #ROW0
     rts
 
-mm_tracks:                      ; row 2: "<n> TRACKS" or "<infinity> TRACKS"
+mm_tracks:                      ; row 2: "<n>  TRACKS" / "<infinity> TRACKS": a two-glyph number field (digits left aligned), a blank, then the word
     lda.l TRKS
     bne mk_n
-    ldx #((ROW0 + 6) * 32 + 5) * 2
-    lda #$0060                  ; the infinity sign: 2x2 tiles $60 $61 / $70 $71 (build_inf_tiles)
-    sta $0C6C,x
-    lda #$0061
-    sta $0C6E,x
-    lda #$0070
-    sta $0CAC,x
-    lda #$0071
-    sta $0CAE,x
-    lda #((ROW0 + 6) << 8) | 7
-    sta $1FB2
-    ldy #0
-    sep #$20
-    bra mk_sp
-.a16
+    ldx #MK_FIELD               ; the infinity sign fills the field: left half, right half (kp_gfx slots 16 / 17, tiles 320 / 322)
+    lda #320
+    jsr mm_quad
+    ldx #MK_FIELD + 4
+    lda #322
+    jsr mm_quad
+    bra mk_txt
 mk_n:
     ldx #0
 mk_t:
@@ -153,57 +147,52 @@ mk_t:
     inx
     bra mk_t
 mk_d:
-    sta.l MMT                   ; ones
-    lda #((ROW0 + 6) << 8) | 5
-    sta $1FB2
-    ldy #0
-    sep #$20
-    cpx #0
-    beq mk_o
+    sta.l MMT                   ; ones; X = tens
     txa
-    clc
-    adc #$30
-    sta $1FB4,y
-    iny
-mk_o:
+    beq mk_one
+    ldx #MK_FIELD
+    jsr mm_dig
     lda.l MMT
-    clc
-    adc #$30
-    sta $1FB4,y
-    iny
-mk_sp:
-    lda #$20
-    sta $1FB4,y
-    iny
-    ldx #0
-mk_w:                           ; TRACK
-    lda.l mm_t_trk,x
-    sta $1FB4,y
-    iny
-    inx
-    cpx #5
-    bne mk_w
-    rep #$20
+    ldx #MK_FIELD + 4
+    jsr mm_dig
+    bra mk_txt
+mk_one:
+    lda.l MMT
+    ldx #MK_FIELD
+    jsr mm_dig
+    lda #$FFFF                  ; second cell empty
+    ldx #MK_FIELD + 4
+    jsr mm_dig
+mk_txt:
+    ldx #addr(mm_t_trks)
     lda.l TRKS
-    sep #$20
     cmp #1
-    beq mk_nos
-    lda #$53                    ; S
-    sta $1FB4,y
-    iny
-mk_nos:
-    lda #$20                    ; two blanks wipe a longer text
-    sta $1FB4,y
-    iny
-    sta $1FB4,y
-    iny
-    lda #0
-    sta $1FB4,y
-    sta $1FB5,y
-    sta $1FB6,y
-    rep #$20
-    ldx #$1FB2
-    jsl t_dsb
+    bne mk_w
+    ldx #addr(mm_t_trk1)
+mk_w:
+    lda #((ROW0 + 6) << 8) | 11
+    jmp mm_text
+
+mm_dig:                         ; A = digit 0..9 (or $FFFF = blank), X = buffer offset: the digit's 16x16 glyph (kp_gfx, tiles 256..) as 2x2 tiles
+    cmp #$FFFF
+    bne md_d
+    lda #128                    ; blank glyph of the game's font
+    bra mm_quad
+md_d:
+    phx
+    asl a
+    tax
+    lda.l kp_keys,x             ; tile of hex value A
+    plx
+mm_quad:                        ; A = top-left tile, X = offset into the tilemap buffer ($0C6C+X): sprite layout, lower half 16 tiles on
+    sta $0C6C,x
+    inc a
+    sta $0C6E,x
+    clc
+    adc #15
+    sta $0CAC,x
+    inc a
+    sta $0CAE,x
     rts
 
 mm_grey_row:                    ; A = tile row: palette 5 (grey) for both tile rows from column 5 to 23
@@ -293,19 +282,14 @@ mm_len:                         ; A = menu row -> A = length of its selector bar
 ml_1:
     lda #11
     rts
-ml_2:
+ml_2:                           ; field (2) + blank + TRACKS (6), one less letter for "1 TRACK"; +1
     lda.l TRKS
     cmp #1
     beq ml_one
-    cmp #10
-    bcs ml_big
-    lda #9
+    lda #10
     rts
 ml_one:
-    lda #8
-    rts
-ml_big:
-    lda #10
+    lda #9
     rts
 ml_3:
     lda #9
@@ -338,38 +322,6 @@ mm_rel:
     sta $1FF6                   ; attract countdown restarts
     bra mm_loop
 
-build_inf_tiles:                ; the infinity sign into VRAM tiles $60 $61 / $70 $71 (words $1600 / $1700), screen in forced blank
-    sep #$20
-    stz $4200
-    lda #$80
-    sta $2100
-    sta $2115
-    rep #$20
-    lda #$1600
-    sta.l $002116
-    ldx #0
-bit_a:
-    lda.l inf_gfx,x
-    sta.l $002118
-    inx
-    inx
-    cpx #64
-    bcc bit_a
-    lda #$1700
-    sta.l $002116
-bit_b:
-    lda.l inf_gfx,x
-    sta.l $002118
-    inx
-    inx
-    cpx #128
-    bcc bit_b
-    sep #$20
-    lda #$81
-    sta $4200
-    rep #$20
-    rts
-
 menu_init:                      ; first use after power-on: one race, no series running, scores cleared
     lda.l MAGIC2
     cmp #$5AA5
@@ -397,7 +349,7 @@ mm_run:
     lda #0
     jsl t_page                  ; page 0: frame and title (its label list was redirected to mm_title), palette
     jsr build_seed_tiles
-    jsr build_inf_tiles
+    jsl kp_build_glyphs         ; the big digits and the infinity halves (VRAM tiles 256..351)
     jsr mm_pal_text
     lda.l MCUR
     sta.l CUR

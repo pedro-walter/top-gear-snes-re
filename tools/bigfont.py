@@ -72,6 +72,8 @@ def inf_mask():
     return m
 
 def pixels(ch):
+    if ch in BMP_GLYPHS: return bmp_pixels(ch)
+    if ch in ('inf_l', 'inf_r'): return bmp_pixels('infinity_left' if ch == 'inf_l' else 'infinity_right')
     return pixels_of(inf_mask() if ch == 'inf' else mask(ch))
 
 def pixels_of(m):
@@ -88,6 +90,19 @@ def pixels_of(m):
                     px[y][x] = 2
     return px
 
+def bmp_pixels(name):
+    """16x16 colour indexes of font/original/<name>.bmp (indexed BMP, index 0 = transparent, 1..15 = the gold font's colours)."""
+    import os, struct
+    d = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'font', 'original', name + '.bmp'), 'rb').read()
+    off, = struct.unpack_from('<I', d, 10)
+    w, h = struct.unpack_from('<ii', d, 18)
+    bpp, = struct.unpack_from('<H', d, 28)
+    assert (w, abs(h), bpp) == (16, 16, 8), name
+    rows = [[d[off + y * 16 + x] for x in range(16)] for y in range(16)]     # 16 bytes per row, no padding
+    return rows[::-1] if h > 0 else rows
+
+BMP_GLYPHS = set('0123456789ACEF')       # drawn by us in font/original; b and d stay generated (no lowercase in the game's font)
+
 def tile_bytes(px, tx, ty):
     out = bytearray()
     planes = [bytearray(), bytearray(), bytearray(), bytearray()]
@@ -102,9 +117,10 @@ def tile_bytes(px, tx, ty):
     return bytes(out)
 
 def gfx():
-    """2048 bytes = VRAM tiles 256..319: glyph j at tile (j>>3)*32 + (j&7)*2, its lower half 16 tiles on."""
-    tiles = [bytes(32)] * 64
-    for j, ch in enumerate(ORDER):
+    """3072 bytes = VRAM tiles 256..351: glyph j at tile (j>>3)*32 + (j&7)*2, its lower half 16 tiles on.  Slots 0..15 = hex digits,
+    16 / 17 = left / right half of the infinity sign (main menu)."""
+    tiles = [bytes(32)] * 96
+    for j, ch in enumerate(list(ORDER) + ['inf_l', 'inf_r']):
         px = pixels(ch)
         base = (j >> 3) * 32 + (j & 7) * 2
         for ty in range(2):
@@ -112,24 +128,16 @@ def gfx():
                 tiles[base + ty * 16 + tx] = tile_bytes(px, tx, ty)
     return b''.join(tiles)
 
-def inf_gfx():
-    """128 bytes: the infinity sign (menu 'TRACKS' row) as 4 tiles in the order top-left, top-right, bottom-left, bottom-right."""
-    px = pixels('inf')
-    return b''.join(tile_bytes(px, tx, ty) for ty in range(2) for tx in range(2))
-
 def tile(slot): return 128 + (slot >> 3) * 32 + (slot & 7) * 2     # the game's own glyph slots (A=1..Z=26, arrows 30/31)
+INF_L, INF_R = 16, 17                                           # glyph slots of the infinity halves
 def new_tile(v): return 256 + (v >> 3) * 32 + (v & 7) * 2
 KEYS = [new_tile(v) for v in range(16)] + [tile(30)]            # hex value 0..15, then the left arrow (delete)
 END_TILES = [tile(5), tile(14), tile(4)]                        # E N D (game font)
 COL0, ROW0, PITCH_X, PITCH_Y = 6, 11, 3, 4    # key grid: 6 columns x 3 rows of 16x16 glyphs (tile units)
 
 def asm():
-    out = ['kp_gfx:                         ; 2048 bytes: VRAM tiles 256..319 (see tools/bigfont.py)']
+    out = ['kp_gfx:                         ; 3072 bytes: VRAM tiles 256..351 (hex digits, infinity halves) (see tools/bigfont.py)']
     g = gfx()
-    for i in range(0, len(g), 32):
-        out.append('    .db ' + ','.join('$%02X' % b for b in g[i:i + 32]))
-    out.append('inf_gfx:                        ; 128 bytes: infinity sign, tiles TL TR BL BR (main menu TRACKS row)')
-    g = inf_gfx()
     for i in range(0, len(g), 32):
         out.append('    .db ' + ','.join('$%02X' % b for b in g[i:i + 32]))
     out.append('kp_keys:                        ; glyph tile of every key (hex value 0..15, 16 = delete arrow)')
