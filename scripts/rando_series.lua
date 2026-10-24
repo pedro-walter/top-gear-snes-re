@@ -71,3 +71,10 @@ emu.addEventCallback(function()
     print(string.format("END f=%d races=%d DONE=%d TRKS=%d", f, races, emu.read(0xFA02,emu.memType.snesWorkRam+0) , 0))
     emu.stop(0) end
 end, emu.eventType.endFrame)
+if os.getenv("APU") then   -- log the writes to APU port 0 (music commands; block uploads count up), from frame APU on
+  local fc=0
+  emu.addEventCallback(function() fc=fc+1 end, emu.eventType.endFrame)
+  for bank=0,0x3F do   -- the port is mirrored in every bank $00-$3F and the menu code writes it with DBR = $0F
+    emu.addMemoryCallback(function(a,v) if fc>=tonumber(os.getenv("APU")) then print(string.format("APU0 <- %02X  f=%d",v,fc)) end end, emu.callbackType.write, bank*0x10000+0x2140, bank*0x10000+0x2140)
+  end
+end

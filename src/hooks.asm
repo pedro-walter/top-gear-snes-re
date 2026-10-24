@@ -219,6 +219,8 @@ t_vbl:      jsr $A24D
     rtl
 t_bfo:      jsr $86E7
     rtl
+t_music:    jsr $8133                   ; play_music: A = song block (0 = title / menu music, 6 = the "completed Top Gear" tune)
+    rtl
 
 ; ---- main menu entry 2: COUNTRY -> SEED -----------------------------------------------------------------
 .org $0F918B
@@ -621,6 +623,7 @@ pe_flag:
 pe_menu:
     lda #0
     sta.l PODIUM
+    jsl t_music                 ; A = 0: stops the podium tune and uploads + starts the title music again (as the original does before its title return)
     jml $0F815A                 ; back to the title screen (KEMCO intro, PRESS START), like after power-on
 
 hook_msg0:                      ; 0F:8584 scene code 0: the message
@@ -632,7 +635,9 @@ hm0_p:
     ldx #addr(msg_win)
     jsl t_dstr
     jsr pod_bang
-    jml $0F858A
+    lda #6                      ; the tune of the original "completed Top Gear" scene (not the qualified one, 5)
+    jsl t_music
+    jml $0F859D
 hm0_d:
     jsl t_dstr
     jml $0F858A
@@ -646,6 +651,8 @@ hm1_p:
     ldx #addr(msg_lose)
     jsl t_dstr
     jsr pod_bang
+    lda #6                      ; same tune for the sad driver (the original plays none there)
+    jsl t_music
     jml $0F859D
 hm1_d:
     jsl t_dstr
