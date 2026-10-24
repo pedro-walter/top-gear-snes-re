@@ -74,7 +74,7 @@ bar_hb_t:
     sta.l $002118
     inx
     inx
-    cpx #64
+    cpx #96
     bcc bar_hb_t
     lda #$27F0                  ; sprite tile $7F (table at byte $4000): the dot
     sta.l $002116
@@ -96,15 +96,40 @@ bar_hb_f:
     inx
     cpx #96
     bcc bar_hb_f
+    ; BX = tile column of the pit (none: no pit lane on this track, $1EF0 >= lap length)
+    ldy #$FFFF
+    lda.l $7FF83E               ; the generator's pit word (PITW; $1EF0 is not loaded yet when the HUD is built) = side << 15 | position / 2
+    and #$7FFF
+    asl a
+    cmp.l $000200
+    bcs bar_hb_np
+    jsr bar_pos_x               ; position -> 0..BAR_W pixels, same scale as the dots
+    clc
+    adc #BAR_X0
+    lsr a
+    lsr a
+    lsr a
+    tay
+bar_hb_np:
+    tya
+    sta.l BX
     lda #$0DA0
     sta.l $002116
     ldx #0
 bar_hb_13:
-    lda #$AC01                  ; the original filler, the line tile at columns 3 and 28
+    lda #$AC01                  ; the original filler
     cpx #3
     beq bar_hb_13s
     cpx #28
-    bne bar_hb_13w
+    beq bar_hb_13s              ; start / finish line tile
+    txa
+    cmp.l BX                    ; pit column?
+    beq bar_hb_13p
+    lda #$AC01
+    bra bar_hb_13w
+bar_hb_13p:
+    lda #$2CAA                  ; pit marker tile
+    bra bar_hb_13w
 bar_hb_13s:
     lda #$2CA8
 bar_hb_13w:
@@ -127,6 +152,9 @@ bar_gfx:
     .db $00,$00, $00,$00, $3C,$00, $3C,$18, $3C,$C3, $00,$FF, $00,$FF, $00,$FF
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
     .db $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF, $00,$FF
+    .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
+; $AA = pit marker: black box on the three strip lines (colour 2) with a white dash (colour 1) in the middle line
+    .db $00,$00, $00,$00, $00,$FF, $3C,$C3, $00,$FF, $00,$00, $00,$00, $00,$00
     .db $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
 
 bar_dot:                        ; 4bpp: row 0 = black end pixels (colour 6: planes 1+2) around 4 pixels of colour 9 (planes 0+3)

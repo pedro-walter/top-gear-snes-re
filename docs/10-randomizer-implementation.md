@@ -199,3 +199,5 @@ The red car goes 4.75 km on a tank in 5th (docs/12, the thirstiest car). A piece
 **Update:** playtest showed the red car finishing 3 laps of 46 pieces (138 pieces) on one tank, so the range is taken as 130 pieces and the no-pit limit is 90 % of it: `L * laps <= 117` (`NOPIT_PIECES`, `cmp #118`). About 16 % of seeds now have no pit (e.g. 0004B66A, 0005CCD1). The 72-piece figure above is superseded.
 
 **Update 2:** the limit is set by hand to `L * laps <= 129` (`NOPIT_PIECES`, `cmp #130`): no pit on races of 129 pieces or fewer. Supersedes the 117 above.
+
+**Pit marker on the lap strip:** `hook_bar` puts BG1 tile `$AA` (VRAM `$0AA0`: black box with a white dash on the three strip lines) in row 13 at the tile column of the pit, `(24 + pit position * 200 / lap length) / 8`, using the generator's pit word `$7FF83E` (`$1EF0` is not set yet when the HUD is built). Tracks without a pit get no marker. Checked by screenshot: seed 00163BC9 (pit at column 17), 0004B66A (none).
