@@ -919,7 +919,7 @@ pit_setup:
     sta ROADW
 pm_0:
     stz PITW
-    lda LEN                     ; LEN * LAPS <= 72 pieces (< 90% of the red car's 4.75 km tank): no pit lane at all
+    lda LEN                     ; LEN * LAPS <= 117 pieces (90% of the red car's 130-piece range): no pit lane at all
     sta T6
     lda #0
     ldy LAPS
@@ -928,7 +928,7 @@ pn_m:
     adc T6
     dey
     bne pn_m
-    cmp #73
+    cmp #118
     bcs pn_pit
     lda #$7FFF                  ; position $FFFE: never reached, so no pit arrow / AI pit corridor either
     sta PITW

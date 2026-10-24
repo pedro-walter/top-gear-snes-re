@@ -84,9 +84,9 @@ WIN = 64
 HAZARD = [27,7,24,24,7,7,15,7,15,15,27,27,27,27,15,15,7,7,27,27,15,15,15,15,24,24,15,7,31,31,24,24,15,15,15,15,15,15,15,15,15,15,15,15,15,15,27,7,26,26,27,27,15,15,15,15,15,15,15,7,27,27,27,27]
 ROCKS = [(0, 60), (5, 60), (13, 32), (16, 60), (20, 16), (21, 60), (25, 0)]    # offset, lateral of a rock field (as near the start of Los Angeles)
 GA = 96                                  # hazards keep this many slots away from the start gantry
-# Red car (thirstiest) goes 4.75 km on a tank in 5th (docs/12); no pit when the race is under 90 % of that:
-# L * laps * 15/256 km < 0.9 * 4.75  <=>  L * laps <= 72
-NOPIT_PIECES = 72
+# Red car (thirstiest) finished 3 x 46 = 138 pieces on a tank in the game; range taken as 130 pieces, no pit when the race is under 90 % of it:
+# L * laps <= 117
+NOPIT_PIECES = 117
 SIGN_TYPES = (8, 9, 13)                  # right chevron, left chevron, pit flag
 # (scenery template, pit word side bit, object group of the 1st half, flag template far/near, flag record slot (0 = b0, 1 = b1),
 #  road style of type 3, mirror bit of 00:DEE4).  Exactly the combinations of the original tracks: the pit lane is on the left
