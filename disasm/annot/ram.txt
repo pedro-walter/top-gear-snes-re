@@ -56,10 +56,13 @@
 1F02 w final_pos_p2
 1F04 w two_player       0 = one-player mode
 1F06 w track_id         track number 0..31 (country = track>>2)
+1F08 w country_base    track_id & 0x1C of the last race; the title/location screen restarts here (docs/13)
+1F0A w unlock_table    3 words (per skill level): highest country index unlocked
 1F10 w difficulty       0..2 amateur/professional/championship
 1F12 w finish_list      ids of finished cars, in finish order
 1F26 w finish_time      finishing time per car id
-1F4E w ?                (unnamed)
+1F4E b championship_pts championship points per car id, 20 bytes (id 0 = player 1, 1 = player 2/computer); docs/13
+1F62 b standings_order car ids sorted by championship points, best first (20 bytes, built by draw_points_table)
 1F76 w mask_accel       joypad mask: accelerate (X=0040)
 1F78 w mask_brake       joypad mask: brake (Y=4000)
 1F7A w mask_shift_up    0 = automatic transmission
@@ -73,6 +76,7 @@
 1FB0 b units_p1         non-zero = km/h, 0 = mph
 1FB1 b units_p2
 1FF4 w rng_seed         LCG seed (seed = 13*(seed+7))
+1FF8 w place_p1        shown place (1-based) on the qualify screen; 1FFA = player 2
 1FF6 w attract_flag  attract-mode countdown/demo flag: $8000 = demo race running, counts down from $04B0 on the title screen
 1FFC w rng_track        random-track path uses $1FFC & 0x1F
 4000 w hill_table       $7E4000: slope word per 32 position units

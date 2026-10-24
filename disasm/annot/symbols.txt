@@ -195,9 +195,9 @@
 ;; fills $1FF8/$1FFA with the human players' finishing places
 @0F8705 load_results_palette
 @0F871A qualify_check_1p
-;; carry set when the human car finished out of the top places (used for championship qualification)
+;; carry set when no human id is among the first 5 entries of finish_list (race test, docs/13)
 @0F8733 advance_track
-;; INC $1F06 (mod 32); after the 4th race of a country resets the points table and tests qualification
+;; INC $1F06 (mod 32); after the 4th race of a country resets the points table and tests qualification: human must be in the top 3 of $1F62 (docs/13)
 @0F8781 draw_table_rows_a
 @0F87AD draw_table_rows_b
 @0F87D9 pad_name_for_draw
@@ -233,7 +233,7 @@
 ;; attract mode: $1F06 = random track ($1FFC & 31), seeds the RNG with $1FFC, then starts a demo race ($1FF6 = $8000)
 @0F911C draw_flag_tiles
 @0F914E draw_country_flag
-;; the country flag/map tiles on the main menu (country = $1F06>>2)
+;; main menu: country flag. In results_flow A selects the scene: 0/3 = celebrating driver, 1/2 = sad driver (docs/13)
 @0F918B main_menu
 ;; MAIN MENU loop: entries (index in $5A): 0 = 1/2 PLAYERS, 1 = SKILL LEVEL, 2 = COUNTRY, 3 = SPEED MPH/KPH, 4 = PLAY GAME.
 ;; Up/Down move, Left/Right toggle entries 0 and 3, A/Start enters.  Returns (RTS) to start the race on PLAY GAME.

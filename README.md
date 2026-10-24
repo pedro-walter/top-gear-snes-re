@@ -32,6 +32,9 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 8. [Accelerator + brake cornering trick (P1 only)](docs/08-brake-cornering-trick.md)
 9. [Randomizer plan and decisions](docs/09-randomizer-plan.md)
 10. [Randomizer implementation status, memory map, tests](docs/10-randomizer-implementation.md)
+11. [Speech balloons and messages](docs/11-speech-balloons-messages.md)
+12. [Ideal gear shifts](docs/12-ideal-gear-shifts.md)
+13. [Race results, championship points, qualification / game over, podium scene](docs/13-race-results-qualification-podium.md)
 
 ## Tools (`tools/`, Python 3, run from the repo root with `python3 -I`)
 | tool | purpose |
