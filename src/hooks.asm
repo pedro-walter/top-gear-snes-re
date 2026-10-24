@@ -632,6 +632,9 @@ hook_msg0:                      ; 0F:8584 scene code 0: the message
     bra hm0_d
 hm0_p:
     ldx #addr(msg_win)
+    jsl t_dstr
+    jsr pod_bang
+    jml $0F858A
 hm0_d:
     jsl t_dstr
     jml $0F858A
@@ -643,6 +646,9 @@ hook_msg1:                      ; 0F:8592 scene code 1
     bra hm1_d
 hm1_p:
     ldx #addr(msg_lose)
+    jsl t_dstr
+    jsr pod_bang
+    jml $0F859D
 hm1_d:
     jsl t_dstr
     jml $0F859D

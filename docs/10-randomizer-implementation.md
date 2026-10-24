@@ -184,8 +184,7 @@ planned up/down "more options" arrows were not needed; if a row is added later t
   (docs/13 lists them); nothing in the randomizer ever ends a session because of a bad place.
 * **Podium** (after the last race of a finite series, `podium_start`): the scene screen of docs/13 section 5 is reused - checkered `TG` wall, one driver per human
   (celebrating if a human is in the top 3 of the standings, else the sad one) and a `PLAYER n <place>` label from `build_finish_order` (place = standing in the
-  series, `$1F62`); 2P shows both players, 1P only the human (the COMPUTER car has no scene). The message is ours (`CONGRATULATIONS / YOU MADE THE PODIUM / SERIES COMPLETE`
-  or `SORRY / YOU MISSED THE PODIUM / SERIES COMPLETE`, `msg_win` / `msg_lose`), hooked at `0F:8584` / `0F:8592`; the password block (`0F:85F2`) is skipped; BG1 scroll has to be
+  series, `$1F62`); 2P shows both players, 1P only the human (the COMPUTER car has no scene). The message is ours (`THANK YOU FOR PLAYING!` for both drivers; the font has no `!`, so `pod_bang` uploads a drawn tile to VRAM word `$1600` and writes it behind the text), hooked at `0F:8584` / `0F:8592`; the password block (`0F:85F2`) is skipped; BG1 scroll has to be
   set to `$0010` first (the ranking scrolls the layer away: black screen without it). After a key press `hook_podend` (`0F:8669`) goes to the main menu (title skipped once).
 * Infinite series never reaches the podium; the world ranking after every race is the scoreboard.
 

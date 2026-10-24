@@ -549,17 +549,39 @@ mme_df:
 mme_sd:
     jml seed_menu
 
+pod_bang:                       ; the "!" of the podium message: tile $60 of the scene's font area (VRAM word $1600, free there), written in forced blank
+    sep #$20
+    stz $4200
+    lda #$80
+    sta $2100
+    sta $2115
+    rep #$20
+    lda #$1600
+    sta.l $002116
+    ldx #0
+pb_l:
+    lda.l pb_gfx,x
+    sta.l $002118
+    inx
+    inx
+    cpx #32
+    bcc pb_l
+    sep #$20
+    lda #$81
+    sta $4200
+    rep #$20
+    lda #$0060
+    sta $0C6C+(24*32+26)*2      ; column 26 of tile row 24 = right behind the text
+    rts
+pb_gfx:
+    .db $3C,$02,$38,$04,$18,$04,$30,$08,$30,$08,$00,$00,$38,$04,$00,$18,$02,$00,$04,$00,$04,$00,$08,$00,$08,$00,$00,$00,$04,$00,$18,$00
+
 .org $0FFF17                    ; free tail of bank $0F: the title of page 0 and the podium messages (draw_string needs bank $0F addresses)
 mm_title:
     .db $09,$02,"OPTIONS",0,0,0
-msg_win:
-    .db $09,$16,"CONGRATULATIONS",0
-    .db $06,$18,"YOU MADE THE PODIUM",0
-    .db $08,$1A,"SERIES COMPLETE",0,0,0
+msg_win:                        ; the same text for the celebrating and the sad driver; the "!" is a drawn tile (the font has none), see pod_bang
 msg_lose:
-    .db $0E,$16,"SORRY",0
-    .db $05,$18,"YOU MISSED THE PODIUM",0
-    .db $08,$1A,"SERIES COMPLETE",0,0,0
+    .db $05,$18,"THANK YOU FOR PLAYING",0,0,0
 
 .org $0DC738                    ; page table b (strings of page 0 and 1): the main menu labels are drawn by mm_row, only the title stays
     .dw mm_title & $FFFF, mm_title & $FFFF
