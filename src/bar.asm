@@ -101,6 +101,8 @@ bar_hb_f:
     lda.l $7FF83E               ; the generator's pit word (PITW; $1EF0 is not loaded yet when the HUD is built) = side << 15 | position / 2
     and #$7FFF
     asl a
+    clc
+    adc #2048                   ; the pit word is where the flags start; the entrance is two pieces further
     cmp.l $000200
     bcs bar_hb_np
     jsr bar_pos_x               ; position -> 0..BAR_W pixels, same scale as the dots
