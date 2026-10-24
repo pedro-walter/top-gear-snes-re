@@ -192,3 +192,6 @@ Tests: `scripts/rando_series.lua` (env `TRACKS` = 0 infinite / n, `TWO=1`, `PLAC
 `race_end_force.lua` and prints `results_flow / har_next / podium_start / hook_podend / mm_run` with frame numbers (verified: 1 track -> menu, 2 and 8 tracks -> podium, 0 -> 9
 races without podium, 2P podium with both drivers, 3-digit scores in the ranking). Scripts that navigate the menu were updated (SEED is row 3, PLAY GAME row 5;
 `common.lua` adds the extra Down when `TG_ROM` contains `rando`).
+
+## No pit on short races
+The red car goes 4.75 km on a tank in 5th (docs/12, the thirstiest car). A piece is 15/256 km, so a race is `L * laps * 15/256` km. When that is under 90 % of 4.75 km (`L * laps <= 72`) the track gets no pit: no entrance object, no flags, no template-20 piece, and the pit word is `$7FFF` (position `$FFFE`, never reached, so no pit arrow and no AI pit corridor). Same RNG draws as before, so the rest of the track is unchanged. `NOPIT_PIECES` in `tools/trackgen.py`, `pn_m` in `pit_setup` (`src/gen.asm`). Only ~1 % of seeds qualify (3 laps of 24 pieces is the only combination, since the shortest race is 4.2 km); e.g. 000B99A1, 00150673 (verified in the smoke test, 400 seeds match the Python reference).

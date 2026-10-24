@@ -84,6 +84,9 @@ WIN = 64
 HAZARD = [27,7,24,24,7,7,15,7,15,15,27,27,27,27,15,15,7,7,27,27,15,15,15,15,24,24,15,7,31,31,24,24,15,15,15,15,15,15,15,15,15,15,15,15,15,15,27,7,26,26,27,27,15,15,15,15,15,15,15,7,27,27,27,27]
 ROCKS = [(0, 60), (5, 60), (13, 32), (16, 60), (20, 16), (21, 60), (25, 0)]    # offset, lateral of a rock field (as near the start of Los Angeles)
 GA = 96                                  # hazards keep this many slots away from the start gantry
+# Red car (thirstiest) goes 4.75 km on a tank in 5th (docs/12); no pit when the race is under 90 % of that:
+# L * laps * 15/256 km < 0.9 * 4.75  <=>  L * laps <= 72
+NOPIT_PIECES = 72
 SIGN_TYPES = (8, 9, 13)                  # right chevron, left chevron, pit flag
 # (scenery template, pit word side bit, object group of the 1st half, flag template far/near, flag record slot (0 = b0, 1 = b1),
 #  road style of type 3, mirror bit of 00:DEE4).  Exactly the combinations of the original tracks: the pit lane is on the left
@@ -206,13 +209,15 @@ def generate(seed):
     pp = 4 + r.rnd(L - 8)                                # pit piece 4..L-5
     ps = PIT_STYLES[r.rnd(len(PIT_STYLES))]
     st, side, grp, tfar, tnear, fpos, rstyle, mirror = ps
-    scen[pp] = st
-    recs[2 * pp] = [21, 58, 0, 0, grp]; recs[2 * pp + 1] = [21, 58, 0, 0, grp + 1]
-    for q, T in ((pp - 2, tfar), (pp - 1, tnear)):       # pit flags on the two pieces before the pit (like the original tracks)
-        rc = [0, 0, 0, 0, T]; rc[fpos] = 13
-        recs[2 * q] = list(rc); recs[2 * q + 1] = list(rc)
+    nopit = L * laps <= NOPIT_PIECES                     # short race: one tank of the thirstiest car is enough, no pit lane
+    if not nopit:
+        scen[pp] = st
+        recs[2 * pp] = [21, 58, 0, 0, grp]; recs[2 * pp + 1] = [21, 58, 0, 0, grp + 1]
+        for q, T in ((pp - 2, tfar), (pp - 1, tnear)):   # pit flags on the two pieces before the pit (like the original tracks)
+            rc = [0, 0, 0, 0, T]; rc[fpos] = 13
+            recs[2 * q] = list(rc); recs[2 * q + 1] = list(rc)
     recs[2 * (L - 1)] = [0] * 5; recs[2 * (L - 1) + 1] = [0] * 5   # the last piece before the line stays empty (the start gantry needs it)
-    pit = (side << 15) | ((pp * 1024 - 512) // 2)
+    pit = 0x7FFF if nopit else (side << 15) | ((pp * 1024 - 512) // 2)   # 0x7FFF: position 0xFFFE, never reached
     roadw = (rstyle << 9) | (mirror << 15)               # replaces bits 9-11 and 15 of 00:DEE4[env]
     return dict(seed=seed, env=env, L=L, P=P, laps=laps, hill=hill, curvy=curvy, slope=slope, curve=curve,
                 scen=scen, recs=recs, pit=pit, pitpiece=pp, pitstyle=(st, side, grp), roadw=roadw)
@@ -411,8 +416,9 @@ def validate(t):
             a, b = s16(w[32 * k + 31]), s16(w[32 * (k + 1)])
             if abs(a - b) > 400 and name == 'slope' or abs(a - b) > 8 and name == 'curve':
                 errs.append('%s jump piece %d (%d->%d)' % (name, k, a, b)); break
-    if t['scen'][t['pitpiece']] != 20: errs.append('pit scen')
-    if sum(1 for x in t['scen'] if x == 20) != 1: errs.append('pit count')
+    npit = 0 if L * t['laps'] <= NOPIT_PIECES else 1
+    if npit and t['scen'][t['pitpiece']] != 20: errs.append('pit scen')
+    if sum(1 for x in t['scen'] if x == 20) != npit: errs.append('pit count')
     return errs
 
 if __name__ == '__main__':

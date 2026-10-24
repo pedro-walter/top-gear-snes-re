@@ -890,7 +890,7 @@ pit_setup:
     tay
     lda.l pit_styles,x
     and #$00FF
-    sta SCEN,y
+    sta T0                      ; scenery template, stored below unless the race is too short for a pit
     lda.l pit_styles+1,x
     and #$00FF
     sta T1                      ; side
@@ -918,6 +918,27 @@ pit_setup:
     ora #$8000
     sta ROADW
 pm_0:
+    stz PITW
+    lda LEN                     ; LEN * LAPS <= 72 pieces (< 90% of the red car's 4.75 km tank): no pit lane at all
+    sta T6
+    lda #0
+    ldy LAPS
+pn_m:
+    clc
+    adc T6
+    dey
+    bne pn_m
+    cmp #73
+    bcs pn_pit
+    lda #$7FFF                  ; position $FFFE: never reached, so no pit arrow / AI pit corridor either
+    sta PITW
+    bra pn_none
+pn_pit:
+    lda PP
+    asl a
+    tay
+    lda T0
+    sta SCEN,y
     lda PP
     jsr rec_dest
     tay
@@ -950,6 +971,7 @@ pm_0:
     jsr write_flag
     lda T4
     jsr write_flag
+pn_none:
     ; the last piece before the start line stays empty (the start gantry needs it)
     lda LEN
     dec a
@@ -963,6 +985,8 @@ zl_l:
     iny
     dex
     bne zl_l
+    lda PITW
+    bne pn_end                  ; no-pit track: the word stays $7FFF
     ; pit word = side<<15 | (PP*512 - 256)
     lda PP
     xba
@@ -978,6 +1002,7 @@ zl_l:
 pw_s:
     lda T3
     sta PITW
+pn_end:
     rts
 
 ; ---------------------------------------------------------------------------------------------------------
