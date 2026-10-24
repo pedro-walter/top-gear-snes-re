@@ -90,15 +90,16 @@ def pixels_of(m):
                     px[y][x] = 2
     return px
 
-def bmp_pixels(name):
-    """16x16 colour indexes of font/original/<name>.bmp (indexed BMP, index 0 = transparent, 1..15 = the gold font's colours)."""
+def bmp_pixels(name, folder='original', size=16):
+    """size x size colour indexes of font/<folder>/<name>.bmp (indexed 8 bit BMP, index 0 = transparent, 1..15 = the font's colours)."""
     import os, struct
-    d = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'font', 'original', name + '.bmp'), 'rb').read()
+    d = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'font', folder, name + '.bmp'), 'rb').read()
     off, = struct.unpack_from('<I', d, 10)
     w, h = struct.unpack_from('<ii', d, 18)
     bpp, = struct.unpack_from('<H', d, 28)
-    assert (w, abs(h), bpp) == (16, 16, 8), name
-    rows = [[d[off + y * 16 + x] for x in range(16)] for y in range(16)]     # 16 bytes per row, no padding
+    assert (w, abs(h), bpp) == (size, size, 8), name
+    stride = (size + 3) // 4 * 4                                              # rows are padded to 4 bytes
+    rows = [[d[off + y * stride + x] for x in range(size)] for y in range(size)]
     return rows[::-1] if h > 0 else rows
 
 BMP_GLYPHS = set('0123456789ACEF')       # drawn by us in font/original; b and d stay generated (no lowercase in the game's font)
@@ -128,6 +129,10 @@ def gfx():
                 tiles[base + ty * 16 + tx] = tile_bytes(px, tx, ty)
     return b''.join(tiles)
 
+def exclam_gfx():
+    """32 bytes: the '!' of the podium message (the small white italic font has none), font/podium/exclam.bmp, 8x8, index 1 = white, 6 = shadow."""
+    return tile_bytes(bmp_pixels('exclam', 'podium', 8), 0, 0)
+
 def tile(slot): return 128 + (slot >> 3) * 32 + (slot & 7) * 2     # the game's own glyph slots (A=1..Z=26, arrows 30/31)
 INF_L, INF_R = 16, 17                                           # glyph slots of the infinity halves
 def new_tile(v): return 256 + (v >> 3) * 32 + (v & 7) * 2
@@ -140,6 +145,8 @@ def asm():
     g = gfx()
     for i in range(0, len(g), 32):
         out.append('    .db ' + ','.join('$%02X' % b for b in g[i:i + 32]))
+    out.append('pb_gfx:                         ; 32 bytes: the podium "!" tile (font/podium/exclam.bmp)')
+    out.append('    .db ' + ','.join('$%02X' % b for b in exclam_gfx()))
     out.append('kp_keys:                        ; glyph tile of every key (hex value 0..15, 16 = delete arrow)')
     out.append('    .dw ' + ','.join(str(t) for t in KEYS))
     out.append('kp_end_tiles:')

@@ -161,7 +161,7 @@ planned up/down "more options" arrows were not needed; if a row is added later t
 | 4 | `SPEED KPH` / `MPH` | toggle | toggle |
 | 5 | `PLAY GAME` | - | start |
 
-* Labels are the game's big font drawn by `draw_string_to_buffer` into the text buffer (`mm_text`, strings in bank `$10`); the number of tracks is a two-glyph field at tile column 5 (digits left aligned, so `7 `
+* Labels are the game's big font drawn by `draw_string_to_buffer` into the text buffer (`mm_text`, strings in bank `$10`); the number of tracks is a two-glyph field at tile column 5 (digits right aligned, so ` 7`
   and `12`, `mm_dig`) written straight into the tile map from the digit glyphs above, then a blank and `TRACKS` / `TRACK ` at column 11; the **infinity sign** (two glyphs) fills the field. Page 0's label list was redirected (`0D:C738`, table b) to a list that only
   has the title `OPTIONS` (in the free tail of bank `$0F`, `0F:FF17`).
 * **SEED is only active with `1 TRACK`.** Otherwise the label, the 8 digits and the selector are grey: tile words get palette 5 (`$1400`; BG palette 1 is the photo!),
@@ -184,7 +184,7 @@ planned up/down "more options" arrows were not needed; if a row is added later t
   (docs/13 lists them); nothing in the randomizer ever ends a session because of a bad place.
 * **Podium** (after the last race of a finite series, `podium_start`): the scene screen of docs/13 section 5 is reused - checkered `TG` wall, one driver per human
   (celebrating if a human is in the top 3 of the standings, else the sad one) and a `PLAYER n <place>` label from `build_finish_order` (place = standing in the
-  series, `$1F62`); 2P shows both players, 1P only the human (the COMPUTER car has no scene). The message is ours (`THANK YOU FOR PLAYING!` for both drivers; the font has no `!`, so `pod_bang` uploads a drawn tile to VRAM word `$1600` and writes it behind the text), hooked at `0F:8584` / `0F:8592`; the password block (`0F:85F2`) is skipped; BG1 scroll has to be
+  series, `$1F62`); 2P shows both players, 1P only the human (the COMPUTER car has no scene). The message is ours (`THANK YOU FOR PLAYING!` for both drivers; the font has no `!`, so `pod_bang` uploads a drawn 8x8 tile (`font/podium/exclam.bmp`, built into `pb_gfx` by `tools/bigfont.py`) to VRAM word `$1600` and writes it behind the text), hooked at `0F:8584` / `0F:8592`; the password block (`0F:85F2`) is skipped; BG1 scroll has to be
   set to `$0010` first (the ranking scrolls the layer away: black screen without it). After a key press `hook_podend` (`0F:8669`) goes to the main menu (title skipped once).
 * Infinite series never reaches the podium; the world ranking after every race is the scoreboard.
 

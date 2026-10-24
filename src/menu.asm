@@ -128,7 +128,7 @@ mm_rowy:                        ; A = menu row 0..5 -> A = tile row of its label
     adc #ROW0
     rts
 
-mm_tracks:                      ; row 2: "<n>  TRACKS" / "<infinity> TRACKS": a two-glyph number field (digits left aligned), a blank, then the word
+mm_tracks:                      ; row 2: "<n>  TRACKS" / "<infinity> TRACKS": a two-glyph number field (digits right aligned), a blank, then the word
     lda.l TRKS
     bne mk_n
     ldx #MK_FIELD               ; the infinity sign fills the field: left half, right half (kp_gfx slots 16 / 17, tiles 320 / 322)
@@ -157,10 +157,10 @@ mk_d:
     jsr mm_dig
     bra mk_txt
 mk_one:
-    lda.l MMT
+    lda #$FFFF                  ; first cell empty, the digit sits in the second (right aligned)
     ldx #MK_FIELD
     jsr mm_dig
-    lda #$FFFF                  ; second cell empty
+    lda.l MMT
     ldx #MK_FIELD + 4
     jsr mm_dig
 mk_txt:
@@ -525,8 +525,6 @@ pb_l:
     lda #$0060
     sta $0C6C+(24*32+26)*2      ; column 26 of tile row 24 = right behind the text
     rts
-pb_gfx:
-    .db $3C,$02,$38,$04,$18,$04,$30,$08,$30,$08,$00,$00,$38,$04,$00,$18,$02,$00,$04,$00,$04,$00,$08,$00,$08,$00,$00,$00,$04,$00,$18,$00
 
 .org $0FFF17                    ; free tail of bank $0F: the title of page 0 and the podium messages (draw_string needs bank $0F addresses)
 mm_title:
