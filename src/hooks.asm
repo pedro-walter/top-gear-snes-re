@@ -69,6 +69,11 @@ hp_pos:
 .org $0F9281
     jml hook_play               ; was: LDA $1F04 / BNE $9294 (5 bytes, the 5th is unreachable)
 
+; ---- 00:8785  "every car has stopped" test: a refuelled car counts as running again ------------------------
+.org $008785
+    jml hook_status             ; was: LDA $1EB4 / BEQ $87E1 (5 bytes)
+    nop
+
 ; ---- 0F:8457  results shown: a single race has no world ranking (it would only show this race's points again) -----
 .org $0F8457
     jsl hook_rank               ; was: JSR unpad_names / LDA #$0000 (6 bytes)
@@ -554,6 +559,32 @@ hook_blankmap:                  ; the decompressed minimap bitmaps (7E2000..) be
     plb                         ; MVN leaves DBR = $7E; the menu expects $0F
     rep #$30
     rtl
+
+hook_status:                    ; $1EB4 bit 0/1 = P1/P2 can still move. The game sets it again only when a car enters the pit empty
+    rep #$30                    ; while no fade is running, so a car refuelled after the other one finished stayed "stopped" -> fade
+    lda.l $001F00               ; P1 not finished (final_pos < 0) and fuel left: running
+    bmi hs_p1
+    bra hs_p2_chk
+hs_p1:
+    lda.l $001E62
+    beq hs_p2_chk
+    lda.l $001EB4
+    ora #$0001
+    sta.l $001EB4
+hs_p2_chk:
+    lda.l $001F02
+    bpl hs_done
+    lda.l $001E64
+    beq hs_done
+    lda.l $001EB4
+    ora #$0002
+    sta.l $001EB4
+hs_done:
+    lda.l $001EB4
+    bne hs_run
+    jml $0087E1
+hs_run:
+    jml $00878A
 
 hook_rank:                      ; unpad_names (copy: it clobbers A), then the ranking scroll, or straight to the fade out with 1 TRACK
     rep #$30
