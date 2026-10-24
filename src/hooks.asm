@@ -69,6 +69,12 @@ hp_pos:
 .org $0F9281
     jml hook_play               ; was: LDA $1F04 / BNE $9294 (5 bytes, the 5th is unreachable)
 
+; ---- 0F:8457  results shown: a single race has no world ranking (it would only show this race's points again) -----
+.org $0F8457
+    jsl hook_rank               ; was: JSR unpad_names / LDA #$0000 (6 bytes)
+    nop
+    nop
+
 ; ---- 0F:8487  results screen finished: back to the title/main menu instead of the championship flow ---------
 .org $0F8487
     jml hook_afterresults       ; was: SEP #$20 / LDA #$10 / ... championship flow
@@ -548,6 +554,42 @@ hook_blankmap:                  ; the decompressed minimap bitmaps (7E2000..) be
     plb                         ; MVN leaves DBR = $7E; the menu expects $0F
     rep #$30
     rtl
+
+hook_rank:                      ; unpad_names (copy: it clobbers A), then the ranking scroll, or straight to the fade out with 1 TRACK
+    rep #$30
+    ldx #$0007
+    sep #$20
+hr_l1:
+    lda.l $001F86,x
+    cmp #$3D
+    bne hr_n1
+    lda #$20
+    sta.l $001F86,x
+hr_n1:
+    dex
+    bpl hr_l1
+    ldx #$0007
+hr_l2:
+    lda.l $001FA3,x
+    cmp #$3D
+    bne hr_n2
+    lda #$20
+    sta.l $001FA3,x
+hr_n2:
+    dex
+    bpl hr_l2
+    rep #$30
+    lda.l TRKS
+    cmp #1
+    beq hr_skip
+    lda #$0000
+    rtl                         ; on to the scroll to the ranking (0F:845D)
+hr_skip:
+    pla                         ; drop the JSL return address (3 bytes)
+    sep #$20
+    pla
+    rep #$20
+    jml $0F8484                 ; fade_out_dma, then the rest of results_flow as after the ranking
 
 hook_afterresults:              ; results + ranking are done (fade out done): back to the main menu, or on in a track series
     rep #$30

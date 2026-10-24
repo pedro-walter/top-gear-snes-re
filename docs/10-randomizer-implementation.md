@@ -172,6 +172,8 @@ planned up/down "more options" arrows were not needed; if a row is added later t
 * State (bank `$7F`, `MAGIC2 $5AA5` guards it, initialised by `menu_init` - separate from the seed magic because the test scripts poke the seed magic): `TRKS $FA00`
   (0 = infinite, 1 = one race = default), `DONE $FA02`, `PODIUM $FA04`, `MCUR $FA06`, `CUR $FA08`, `SELG $FA0A`, scores `TOTLO $FA20..` / `TOTHI $FA40..` (20 cars).
 
+* **Single race (`1 TRACK`): no world ranking.** `0F:8457` -> `hook_rank` (does the `unpad_names` itself, as it clobbers A): with `TRKS == 1` the scroll to the ranking is skipped and the results screen goes straight to the fade out (`0F:8484`) and the main menu; series still show the ranking.
+
 ### Series (TRKS != 1)
 * `PLAY GAME` (`hook_play`): scores cleared, **a fresh random seed** for every race (SEED is inactive), `DONE = 0`.
 * After the ranking screen (`hook_afterresults`, `0F:8487`): `DONE++`; infinite or `DONE < TRKS` -> `roll_seed`, `rando_env`, the scroll/font state of the original
