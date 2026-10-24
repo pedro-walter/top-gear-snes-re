@@ -561,13 +561,14 @@ hook_blankmap:                  ; the decompressed minimap bitmaps (7E2000..) be
     rtl
 
 hook_status:                    ; $1EB4 bit 0/1 = P1/P2 can still move. The game sets it again only when a car enters the pit empty
-    rep #$30                    ; while no fade is running, so a car refuelled after the other one finished stayed "stopped" -> fade
-    lda.l $001F00               ; P1 not finished (final_pos < 0) and fuel left: running
-    bmi hs_p1
-    bra hs_p2_chk
-hs_p1:
+    rep #$30                    ; while no fade is running, so a car refuelled after the other one finished stayed "stopped" -> fade.
+    lda.l $001F00               ; An unfinished car counts as running when it has fuel or is inside the pit sequence ($1E86/$1E88 < 0,
+    bpl hs_p2_chk               ; e.g. waiting for the refuel to start, fuel still 0, fade countdown already running)
     lda.l $001E62
-    beq hs_p2_chk
+    bne hs_p1_set
+    lda.l $001E86
+    bpl hs_p2_chk
+hs_p1_set:
     lda.l $001EB4
     ora #$0001
     sta.l $001EB4
@@ -575,7 +576,10 @@ hs_p2_chk:
     lda.l $001F02
     bpl hs_done
     lda.l $001E64
-    beq hs_done
+    bne hs_p2_set
+    lda.l $001E88
+    bpl hs_done
+hs_p2_set:
     lda.l $001EB4
     ora #$0002
     sta.l $001EB4
