@@ -53,3 +53,24 @@ The fuel bonus is small: 1 unit of top speed per 64 units of fuel burned, +16 km
 | red | 219 / 227 / 236 | 232 / 240 (empty at 55 s) | 4th is faster |
 
 For white, 4th is 12 km/h slower. For purple and blue, 4th burns about 35 % more per second and only catches up with 5th at about 60 s, when its tank is almost empty (65 s / 70 s). So for these three cars staying in 5th is the best choice even with fuel to spare. The only other fuel burner is the nitro (2700-3800 units, about +1 km/h of top speed), which is used for its own boost anyway. Not tested in the game; km assume 40 ticks/s.
+
+## Longest distance on one tank (`tools/range_opt.py`)
+
+The burn does **not** depend on the throttle: the code at `05:D5F6..D67B` computes RPM from the speed and burns `((RPM*burn_byte)>>14 & 0x3FF)+1` every tick whether or not the accelerator is down (checked against `out/ticks_a.csv`: 846 of 852 ticks exact; the RPM used is the one after that tick's speed update). So lifting the throttle never saves fuel; the only levers are the gear (burn is proportional to the ratio 127/96/58/42/30) and the speed (burn is `k*speed` plus a constant 1 per tick, so a faster cruise is better per km, apart from the integer steps below).
+
+Flat road, full tank, throttle held after the launch, distance until the tank is empty (km assume 40 ticks/s; the car then glides a further 0.2-0.6 km):
+
+| car | 4th | 5th | gain of 5th | best bang-bang target in 5th |
+|---|---|---|---|---|
+| red | 3.46 km | **4.75 km** | +37 % | 4.86 km (hold ~215 km/h, +2 %) |
+| white | 5.34 | 7.35 | +38 % | 7.75 (hold ~155, +5 %, but 25 % slower) |
+| purple | 3.84 | 5.27 | +37 % | 5.48 (+4 %) |
+| blue | 4.19 | 5.78 | +38 % | 6.04 (+4 %) |
+
+Conclusions:
+* **All cars: cruise in 5th with the accelerator held.** That is the answer for the red car too: its 4th gear is faster (+12 km/h, see above) but burns 40 % more per km, so a tank lasts 3.5 km instead of 4.75 km. Red is still the thirstiest car (burn byte 100 vs 64/90/82): white goes 7.35 km on a tank, red 4.75 km.
+* Shift speeds are irrelevant for range (see the table above); upshift as soon as the next gear accelerates better.
+* Small extra: the burn is an integer that steps up at fixed speeds, so a speed just below a step is a little cheaper per km than the equilibrium speed just above it (model at half tank, relative to full throttle): red 5th at 218 km/h (equilibrium 227) +3.6 %; blue 5th at 205 (221) +2 %; white 5th at 210 km/h (211) +12 % (a 1 km/h difference that the rising top speed of an emptying tank erases, so not practical); purple none. Holding such a speed needs throttle pulsing and costs time, so it only matters if the goal is purely to finish the tank-limited race with fuel to spare.
+* Gliding after the tank is empty: with the throttle gone the drag term `|DRAG[gear]-speed|>>8` stops slowing the car when its speed is within 256 units of the gear's drag constant (9500..11000), so shift to the gear whose constant is closest to the current speed (3rd for the red car) to coast farthest. Untested in the game.
+
+Model only, not measured in the game.
