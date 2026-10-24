@@ -608,7 +608,7 @@ ps_go:
     txa
     jml $0F84F5                 ; jmp_0F84F5 of results_flow: PHA PHA, graphics, driver, message, wait for a key
 
-hook_podend:                    ; 0F:8669 end of the scene (stack: scene code): after the podium to the main menu, else as the original
+hook_podend:                    ; 0F:8669 end of the scene (stack: scene code): after the podium to the title screen, else as the original
     pla
     tax
     lda.l PODIUM
@@ -621,9 +621,7 @@ pe_flag:
 pe_menu:
     lda #0
     sta.l PODIUM
-    lda #1
-    sta.l SKIPT
-    jml $0F815A                 ; title (skipped once) -> main menu
+    jml $0F815A                 ; back to the title screen (KEMCO intro, PRESS START), like after power-on
 
 hook_msg0:                      ; 0F:8584 scene code 0: the message
     lda.l PODIUM
