@@ -41,6 +41,10 @@ local function force()
   end
   for i=0,9 do w(0x1F12+i,ids[i]) end
   for i=0,9 do local t=6000+i*20; w(0x1F26+2*ids[i],t&255); w(0x1F27+2*ids[i],t>>8) end
+  if os.getenv("HIGH") then   -- forged big scores (car id: value) to check the 5 digit ranking
+    for id,v in pairs({[0]=65000,[2]=12345,[3]=999,[4]=5,[5]=10000}) do
+      emu.write(0x1FA20+id,v&255,emu.memType.snesWorkRam) emu.write(0x1FA40+id,v>>8,emu.memType.snesWorkRam) end
+  end
   w(0x1EB0,10); w(0x1EB1,0)
   w(0x1F00,PLACE&255); w(0x1F01,0); w(0x1F02,1); w(0x1F03,0)
   local s=emu.getState(); s["cpu.k"]=0; s["cpu.pc"]=0x8834; s["cpu.d"]=0; s["cpu.ps"]=s["cpu.ps"]&0xC7; s["cpu.dbr"]=0; s["cpu.sp"]=0x1FE; emu.setState(s)

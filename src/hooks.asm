@@ -714,10 +714,14 @@ hc_d:
     .a16
     .i16
 
-hook_ptscol:                    ; 0F:8B4E draw_points_column: the scores (up to 3 digits) right aligned at column 21, one row per rank
+hpc_tab:
+    .dw 10000,1000,100,10
+
+hook_ptscol:                    ; 0F:8B4E draw_points_column: the scores (0..65535) LEFT aligned from column 17, one row per rank
     rep #$30
     ldy #0
 hpc_l:
+    phy
     lda $1F62,y
     and #$00FF
     tax
@@ -726,75 +730,86 @@ hpc_l:
     xba
     lda.l TOTLO,x
     rep #$20
-    cmp #1000
-    bcc hpc_c
-    lda #999
+    sta.l MMT                   ; remaining value
+    ldx #0                      ; offset in hpc_tab
+    ldy #0                      ; digit
+hpc_n:
+    lda #0
+    sta.l MMT+2                 ; this digit
 hpc_c:
-    ldx #0
-hpc_h:
-    cmp #100
-    bcc hpc_hd
-    sbc #100
-    inx
-    bra hpc_h
-hpc_hd:
-    pha
-    txa
+    lda.l MMT
+    cmp.l hpc_tab,x
+    bcc hpc_w
+    sbc.l hpc_tab,x
     sta.l MMT
-    pla
-    ldx #0
-hpc_t:
-    cmp #10
-    bcc hpc_td
-    sbc #10
-    inx
-    bra hpc_t
-hpc_td:
-    sta.l MMT+4
-    txa
+    lda.l MMT+2
+    inc a
     sta.l MMT+2
+    bra hpc_c
+hpc_w:
+    lda.l MMT+2
+    sep #$20
+    clc
+    adc #$30
+    sta $1FC0,y
+    rep #$20
+    iny
+    inx
+    inx
+    cpx #8
+    bne hpc_n
+    lda.l MMT                   ; ones
+    sep #$20
+    clc
+    adc #$30
+    sta $1FC0,y
+    ldx #0                      ; skip leading zeros (the ones digit stays)
+hpc_z:
+    lda $1FC0,x
+    cmp #$30
+    bne hpc_zd
+    cpx #4
+    beq hpc_zd
+    inx
+    bra hpc_z
+hpc_zd:
+    ldy #0
+hpc_m:
+    cpx #5
+    beq hpc_p
+    lda $1FC0,x
+    sta $1FB4,y
+    inx
+    iny
+    bra hpc_m
+hpc_p:
+    cpy #5
+    beq hpc_e
+    lda #$20                    ; blanks behind the number
+    sta $1FB4,y
+    iny
+    bra hpc_p
+hpc_e:
+    lda #0
+    sta $1FB4,y
+    sta $1FB5,y
+    sta $1FB6,y
+    rep #$20
+    ply
+    phy
     tya
     xba
     clc
-    adc #$2613
+    adc #$2611
     sta $1FB2
-    sep #$20
-    lda.l MMT
-    beq hpc_b1
-    clc
-    adc #$30
-    bra hpc_s1
-hpc_b1:
-    lda #$20
-hpc_s1:
-    sta $1FB4
-    lda.l MMT+2
-    ora.l MMT
-    beq hpc_b2
-    lda.l MMT+2
-    clc
-    adc #$30
-    bra hpc_s2
-hpc_b2:
-    lda #$20
-hpc_s2:
-    sta $1FB5
-    lda.l MMT+4
-    clc
-    adc #$30
-    sta $1FB6
-    lda #0
-    sta $1FB7
-    sta $1FB8
-    sta $1FB9
-    rep #$20
-    phy
     ldx #$1FB2
     jsl t_dstr
     ply
     iny
     cpy #20
-    bne hpc_l
+    beq hpc_x
+    jmp hpc_l
+hpc_x:
     jml $0F9294                 ; the RTS of main_menu: back to draw_points_table's caller
 
 hook_title:                     ; 0F:8C95 title_screen entry

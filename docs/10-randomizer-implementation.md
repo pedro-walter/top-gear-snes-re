@@ -178,8 +178,8 @@ planned up/down "more options" arrows were not needed; if a row is added later t
   "passed race" path, `JMP 0F:818E` = splash screen of the next track and the race (the original goes the same way after a passed race; the grid of the next race follows
   the places `$1F00/$1F02`, as in the championship). `TRKS == 1` -> back to the main menu as before (title skipped once).
 * **Scores keep adding up, as 16 bit values** (the original has one byte per car, which wraps after 12 wins and shows two digits): `0F:8889` (the add in the results
-  table) -> `hook_addpts`, the bubble sort of the world ranking (`0F:896F`) -> `hook_cmp`, `draw_points_column` (`0F:8B4E`) -> `hook_ptscol` (up to 3 digits, right aligned at
-  column 21, capped at 999 on screen, 65535 in memory). Cars 0 and 1 are the two humans (or player 1 and the COMPUTER car in 1P), 2..19 the bots; `$1F4E` is no longer used.
+  table) -> `hook_addpts`, the bubble sort of the world ranking (`0F:896F`) -> `hook_cmp`, `draw_points_column` (`0F:8B4E`) -> `hook_ptscol` (up to 5 digits, 0..65535, **left aligned** from
+  column 17, blanks behind short numbers; `HIGH=1` in scripts/rando_series.lua forges big scores to check it). Cars 0 and 1 are the two humans (or player 1 and the COMPUTER car in 1P), 2..19 the bots; `$1F4E` is no longer used.
 * **No game over.** The qualification tests (top 5 per race, top 3 per country), the point wipe and the title/KEMCO return of the original are not reachable any more
   (docs/13 lists them); nothing in the randomizer ever ends a session because of a bad place.
 * **Podium** (after the last race of a finite series, `podium_start`): the scene screen of docs/13 section 5 is reused - checkered `TG` wall, one driver per human
