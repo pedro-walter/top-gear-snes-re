@@ -3,7 +3,7 @@ local rs=tonumber(os.getenv("RS") or 1) math.randomseed(rs)
 local sched={} local function press(f,b,n) for i=0,n do sched[f+i]=b end end
 local f=1300
 press(f,"start",5) f=f+120 press(f,"start",5) f=f+math.random(1,200)
-press(f,"down",5) f=f+math.random(5,40) press(f,"down",5) f=f+math.random(1,60)
+press(f,"down",5) f=f+math.random(5,40) press(f,"down",5) f=f+math.random(5,40) press(f,"down",5) f=f+math.random(1,60)
 for i=1,60 do press(f,math.random()<0.5 and "left" or "right",math.random(0,14)) f=f+math.random(1,40) end
 LAST=f
 local FR=0

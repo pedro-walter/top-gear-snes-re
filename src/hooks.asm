@@ -150,12 +150,16 @@ rl_s:
 hook_play:
     rep #$30
     jsr seed_init
-    ldx #$0012
-hp_zero:                        ; the points table ($1F4E..) is per race now
-    stz $1F4E,x
-    dex
-    dex
-    bpl hp_zero
+    jsr menu_init
+    lda #0
+    sta.l DONE
+    sta.l PODIUM
+    lda.l TRKS
+    cmp #1
+    beq hp_one
+    jsr roll_seed               ; a series: every race has a fresh random seed (the SEED row is inactive)
+hp_one:
+    jsr clear_scores            ; the points are per race (1 TRACK) or per series
     jsr rando_env
     lda.l $7FF830               ; ENV -> track id for splash screen, music and per-track tables
     sta.l $001F06
@@ -213,20 +217,12 @@ t_cleartext: jsr $8F80
     rtl
 t_vbl:      jsr $A24D
     rtl
-t_seedmenu: jml seed_menu       ; target of the patched "JMP country_menu"
+t_bfo:      jsr $86E7
+    rtl
 
 ; ---- main menu entry 2: COUNTRY -> SEED -----------------------------------------------------------------
-.org $0F9295
-    jmp t_seedmenu              ; was: JMP country_menu
-
-.org $0F91A0
-    jsl hook_menu_draw          ; was: STZ $5A / LDY $1FB0 (5 bytes)
-    nop
-
-.org $0FA6CD
-    .db "SEED   "               ; label "COUNTRY" of main menu entry 2
-.org $0FA725
-    .dw $0009                   ; $A721[2]: highlight bar length of entry 2 (was 8): ends right after the seed digits
+.org $0F918B
+    jml mm_run                  ; the main menu is src/menu.asm (was: STZ $1F00 / LDA #1 / STA $1F02, same bytes first thing in mm_run)
 
 ; ---- hex keypad: the password page (8) is reused (passwords do not exist any more) --------------------------
 .org $0FA9E0
@@ -467,12 +463,16 @@ seed_glyphs:                    ; the 16 hex digit glyphs of the game's small fo
     .db $3E,$01,$30,$0F,$60,$18,$78,$04,$E0,$1C,$C0,$30,$C0,$20,$00,$E0
     .db $01,$00,$0F,$00,$18,$00,$04,$00,$1C,$00,$30,$00,$20,$00,$E0,$00   ; 'F'
 
-draw_seed_row:                  ; main menu: "xxxxxxxx" after the label SEED, in two rows of the shifted tiles (see build_seed_tiles)
-    lda #$0E0E                  ; x=14, y=14
+draw_seed_row:                  ; main menu: "xxxxxxxx" after the label SEED, in two rows of the shifted tiles (see build_seed_tiles); A = tile row
+    xba
+    ora #$000E                  ; x=14, y=A
     sta.l STR1
+    clc
+    adc #$0100                  ; the lower halves one row below
+    pha
     ldx #STR1+2
     jsr build_seed_str
-    lda #$0F0E                  ; x=14, y=15: lower halves
+    pla
     sta.l STR1+11
     ldx #0
 dsr_c:
@@ -506,32 +506,6 @@ dsr_d:
     ldx #STR1
     jsl t_dstr
     rts
-
-hook_menu_draw:                 ; main menu: draw the seed after the label "SEED"
-    rep #$30
-    jsr seed_init
-    jsr build_seed_tiles
-    jsr draw_seed_row
-    stz $5A
-    ldy $1FB0
-    rtl
-
-hook_lr:                        ; main menu, Left/Right pressed: entry 0 toggles 1/2 players (original), entry 2 rolls a new seed
-    rep #$30
-    lda $5A
-    beq hlr_orig
-    cmp #$0002
-    beq hlr_roll
-    jml $0F922F
-hlr_orig:
-    jml $0F9246
-hlr_roll:
-    jsr roll_seed
-    jsr draw_seed_row
-    jsl t_oam
-    lda #$0084
-    sta $0424
-    jml $0F922F
 
 hook_loc:                       ; splash screen: the seed under the header
     rep #$30
@@ -573,11 +547,255 @@ hook_blankmap:                  ; the decompressed minimap bitmaps (7E2000..) be
     rep #$30
     rtl
 
-hook_afterresults:              ; results screen finished: straight back to the main menu (title skipped once)
+hook_afterresults:              ; results + ranking are done (fade out done): back to the main menu, or on in a track series
     rep #$30
+    lda.l TRKS
+    cmp #1
+    bne har_series
     lda #$0001
     sta.l SKIPT
     jml $0F815A                 ; location_screen (title -> main menu -> splash), RTL returns to 00:8873 -> main_restart
+har_series:
+    lda.l DONE
+    inc a
+    sta.l DONE
+    lda.l TRKS
+    beq har_next                ; infinite
+    lda.l DONE
+    cmp.l TRKS
+    bcs podium_start
+har_next:                       ; next race of the series: new seed, straight to the splash screen (like the original does after a passed race)
+    jsr roll_seed
+    jsr rando_env
+    lda.l $7FF830
+    sta.l $001F06
+    sep #$20
+    lda #$10
+    sta $210E
+    stz $210E
+    rep #$20
+    jsl t_font
+    sep #$20
+    stz $210E
+    stz $210E
+    rep #$20
+    jml $0F818E                 ; location_screen after the title: splash of the next track, RTL -> main_restart
+
+podium_start:                   ; series over: the scene screen of the original (driver on the stand + place label of every human), after the last ranking
+    sep #$20
+    lda #$10
+    sta $210E                   ; BG1VOFS = $0010 as at 0F:8489 (the ranking scrolled the layer away)
+    stz $210E
+    rep #$20
+    jsl t_font
+    jsl t_bfo                   ; build_finish_order: $1FF8 / $1FFA = standing (1 = first) of car 0 / 1 from the sorted list $1F62
+    lda $1FF8
+    cmp #4
+    bcc ps_win
+    lda $1F04
+    beq ps_sad
+    lda $1FFA
+    cmp #4
+    bcc ps_win
+ps_sad:
+    ldx #1                      ; scene code 1 = the sad driver
+    bra ps_go
+ps_win:
+    ldx #0                      ; scene code 0 = the celebrating driver, music 5
+ps_go:
+    lda #1
+    sta.l PODIUM
+    txa
+    jml $0F84F5                 ; jmp_0F84F5 of results_flow: PHA PHA, graphics, driver, message, wait for a key
+
+hook_podend:                    ; 0F:8669 end of the scene (stack: scene code): after the podium to the main menu, else as the original
+    pla
+    tax
+    lda.l PODIUM
+    bne pe_menu
+    txa
+    bne pe_flag
+    jml $0F818E
+pe_flag:
+    jml $0F866F
+pe_menu:
+    lda #0
+    sta.l PODIUM
+    lda #1
+    sta.l SKIPT
+    jml $0F815A                 ; title (skipped once) -> main menu
+
+hook_msg0:                      ; 0F:8584 scene code 0: the message
+    lda.l PODIUM
+    bne hm0_p
+    ldx #$B1C7
+    bra hm0_d
+hm0_p:
+    ldx #addr(msg_win)
+hm0_d:
+    jsl t_dstr
+    jml $0F858A
+
+hook_msg1:                      ; 0F:8592 scene code 1
+    lda.l PODIUM
+    bne hm1_p
+    ldx #$B23B
+    bra hm1_d
+hm1_p:
+    ldx #addr(msg_lose)
+hm1_d:
+    jsl t_dstr
+    jml $0F859D
+
+hook_pw:                        ; 0F:85F2 scene screen: the password block is only for the original country flow
+    lda.l PODIUM
+    bne hpw_skip
+    lda $1F06
+    and #$001C
+    beq hpw_skip
+    jml $0F85FA
+hpw_skip:
+    jml $0F863B
+
+clear_scores:                   ; points of the 20 cars: the original bytes ($1F4E) and the 16 bit scores
+    ldx #$0012
+cs_l:
+    stz $1F4E,x
+    dex
+    dex
+    bpl cs_l
+    sep #$20
+    ldx #19
+    lda #0
+cs_t:
+    sta.l TOTLO,x
+    sta.l TOTHI,x
+    dex
+    bpl cs_t
+    rep #$20
+    rts
+
+hook_addpts:                    ; 0F:8889 (M = 8 bit, Y = car id, X = position 0..9): score of the car += points of the position
+    .a8
+    lda.l $0E8024,x
+    sta.l MMT
+    phx
+    tyx
+    lda.l TOTLO,x
+    clc
+    adc.l MMT
+    sta.l TOTLO,x
+    lda.l TOTHI,x
+    adc #0
+    bcc ha_s
+    lda #$FF
+    sta.l TOTLO,x
+ha_s:
+    sta.l TOTHI,x
+    plx
+    rtl
+    .a16
+
+hook_cmp:                       ; 0F:896F inside the ranking sort (M = X = 8 bit): C = score of car Y >= score of car X (BCC follows)
+    .a8
+    .i8
+    phb
+    lda #$7F
+    pha
+    plb
+    lda addr(TOTHI),y
+    cmp addr(TOTHI),x
+    bne hc_d
+    lda addr(TOTLO),y
+    cmp addr(TOTLO),x
+hc_d:
+    plb                         ; PLB leaves the carry alone
+    rtl
+    .a16
+    .i16
+
+hook_ptscol:                    ; 0F:8B4E draw_points_column: the scores (up to 3 digits) right aligned at column 21, one row per rank
+    rep #$30
+    ldy #0
+hpc_l:
+    lda $1F62,y
+    and #$00FF
+    tax
+    sep #$20
+    lda.l TOTHI,x
+    xba
+    lda.l TOTLO,x
+    rep #$20
+    cmp #1000
+    bcc hpc_c
+    lda #999
+hpc_c:
+    ldx #0
+hpc_h:
+    cmp #100
+    bcc hpc_hd
+    sbc #100
+    inx
+    bra hpc_h
+hpc_hd:
+    pha
+    txa
+    sta.l MMT
+    pla
+    ldx #0
+hpc_t:
+    cmp #10
+    bcc hpc_td
+    sbc #10
+    inx
+    bra hpc_t
+hpc_td:
+    sta.l MMT+4
+    txa
+    sta.l MMT+2
+    tya
+    xba
+    clc
+    adc #$2613
+    sta $1FB2
+    sep #$20
+    lda.l MMT
+    beq hpc_b1
+    clc
+    adc #$30
+    bra hpc_s1
+hpc_b1:
+    lda #$20
+hpc_s1:
+    sta $1FB4
+    lda.l MMT+2
+    ora.l MMT
+    beq hpc_b2
+    lda.l MMT+2
+    clc
+    adc #$30
+    bra hpc_s2
+hpc_b2:
+    lda #$20
+hpc_s2:
+    sta $1FB5
+    lda.l MMT+4
+    clc
+    adc #$30
+    sta $1FB6
+    lda #0
+    sta $1FB7
+    sta $1FB8
+    sta $1FB9
+    rep #$20
+    phy
+    ldx #$1FB2
+    jsl t_dstr
+    ply
+    iny
+    cpy #20
+    bne hpc_l
+    jml $0F9294                 ; the RTS of main_menu: back to draw_points_table's caller
 
 hook_title:                     ; 0F:8C95 title_screen entry
     rep #$30
@@ -672,9 +890,6 @@ ps_roll:
     jml hook_title              ; was: REP #$30 / JSR clear_text_buffer
     nop
 
-.org $0F9242
-    jml hook_lr                 ; was: LDA $5A / BNE $922F
-
 ; ---- title screen text (0F:8ED3 draws the list at $AFC6: entries = x column, y row, pixel offset x, y, text, 0; end = word 0) ---------------
 ; The new list has longer lines, so it lives in an unused stretch of bank $0F (never read in the menus or a race) and the LDX operand points to it.
 ; The Nintendo licence, Kemco and Gremlin lines are replaced; the last line is `VERSION <VERSION in tools/build_rando.py>`.
@@ -699,3 +914,37 @@ ps_roll:
     lda #0
     sep #$20
     jmp $9EEE                   ; next character
+
+; ---- scoring: 16 bit scores per car, kept over the races of a series (see src/menu.asm) ---------------------------------
+.org $0F8889
+    jsl hook_addpts             ; was: CLC / LDA $1F4E,Y / ADC $0E8024,X / STA $1F4E,Y (11 bytes)
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+.org $0F896F
+    jsl hook_cmp                ; was: LDA $1F4E,Y / CMP $1F4E,X (6 bytes; the BCC at 0F:8975 stays)
+    nop
+    nop
+.org $0F8B4E
+    jml hook_ptscol             ; draw_points_column
+.org $0F8584
+    jml hook_msg0               ; was: LDX #$B1C7 / (JSR draw_string)
+.org $0F8592
+    jml hook_msg1               ; was: LDX #$B23B / BRA $859A
+    nop
+.org $0F8669
+    jml hook_podend             ; was: PLA / BNE $866F / JMP $818E
+    nop
+    nop
+.org $0F85F2
+    jml hook_pw                 ; was: LDA $1F06 / AND #$001C / BEQ $863B (8 bytes)
+    nop
+    nop
+    nop
+    nop
+.org $0FA733                    ; title of the difficulty page (was "SKILL LEVEL", same length): the main menu row is called DIFFICULTY
+    .db $05,$04,"DIFFICULTY ",0

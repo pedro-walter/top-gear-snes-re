@@ -13,7 +13,7 @@ local function r2(a) return emu.read(a,wr)|(emu.read(a+1,wr)<<8) end
 local function rw(a) return emu.read(a,mt)|(emu.read(a+1,mt)<<8) end
 local function sw(v) if v>=0x8000 then return v-0x10000 end return v end
 local log=io.open(ROOT.."/out/"..TAG..".txt","w")
-local ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1700,"a"} }
+local ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1680,"down"},{1700,"a"} }
 local f=0
 FIN0=nil
 APR={} for t in (os.getenv('APRESS') or '100,300,500'):gmatch('%d+') do APR[#APR+1]=tonumber(t) end

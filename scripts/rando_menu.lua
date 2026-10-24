@@ -15,7 +15,7 @@ local f=1300
 press(f,"start") f=f+120 press(f,"start") f=f+180     -- title -> main menu
 local function key(b) press(f,b) f=f+24 end
 if os.getenv("TWO") then key("right") end
-key("down") key("down") key("a") f=f+120                -- entry 2 (SEED), open the keypad
+key("down") key("down") key("down") key("a") f=f+120    -- row 3 (SEED), open the keypad
 local cur_r,cur_c=0,0
 local HEXC="0123456789ABCDEF"
 for i=1,#HEX do
@@ -32,7 +32,7 @@ f=f+30
 -- go to END (row 4, col 4): down to row 4 then right
 key("start") f=f+200
 SHOT_MENU=f
-key("down") key("down") key("down") key("down") key("a")   -- main menu restarts at entry 0: PLAY GAME = 4 downs
+key("down") key("down") key("a")   -- the menu comes back on the SEED row (3): PLAY GAME is row 5
 
 emu.addEventCallback(function()
   local p={}

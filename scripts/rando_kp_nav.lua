@@ -4,7 +4,7 @@ local mt=emu.memType.snesMemory
 local sched={} local function press(f,b) for i=0,5 do sched[f+i]=b end end
 local f=1300
 press(f,"start") f=f+120 press(f,"start") f=f+180
-local acts={"down","down","a"}
+local acts={"down","down","down","a"}
 for _,b in ipairs(acts) do press(f,b) f=f+24 end f=f+160
 local seq={ {"up",12},{"up",6},{"up",0},{"left",5},{"right",0},{"down",6},{"down",12},{"down",0},{"left",5},{"up",17},{"right",12},{"left",17},
   {"a",17}  }

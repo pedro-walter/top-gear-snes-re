@@ -17,7 +17,7 @@ local log=io.open(ROOT.."/out/"..TAG..".txt","w")
 emu.addMemoryCallback(function() log:write(string.format("%d race_init: final_pos_p1=%04X p2=%04X flag1FF2=%d\n",f,rw(0x1F00),rw(0x1F02),rw(0x1FF2))) end, emu.callbackType.exec, 0x00A558, 0x00A558)
 emu.addMemoryCallback(function() log:write(string.format("%d   grid: player slot=%d (0=rear) rank0=%d\n",f,rw(0x204)//18,rw(0x1E7A))) log:flush() end, emu.callbackType.exec, 0x00A66B, 0x00A66B)
 emu.addMemoryCallback(function() log:write(string.format("%d race_exit: final_pos_p1=%04X rank=%d\n",f,rw(0x1F00),rw(0x1E7A))) log:flush() end, emu.callbackType.exec, 0x008834, 0x008834)
-local ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1700,"a"} }
+local ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1680,"down"},{1700,"a"} }
 FIN0=nil
 APR={} for t in (os.getenv('APRESS') or '100,300,500'):gmatch('%d+') do APR[#APR+1]=tonumber(t) end
 local function shot(name)

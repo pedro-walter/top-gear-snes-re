@@ -15,7 +15,7 @@ local f=1300
 press(f,"start") f=f+120 press(f,"start") f=f+180     -- title -> main menu
 local function key(b) press(f,b) f=f+24 end
 if os.getenv("TWO") then key("right") end
-key("down") key("down") key("a") f=f+120                -- entry 2 (SEED), open the keypad
+key("down") key("down") key("down") key("a") f=f+120    -- row 3 (SEED), open the keypad
 local cur_r,cur_c=0,0
 local HEXC="0123456789ABCDEF"
 for i=1,#HEX do
@@ -34,7 +34,7 @@ while cur_r<4 do key("down") cur_r=cur_r+1 end
 while cur_c<4 do key("right") cur_c=cur_c+1 end
 key("a") f=f+200
 SHOT_MENU=f
-key("down") key("down") key("right") key("right") key("left") f=f+100
+key("down") key("right") key("right") key("left") f=f+100   -- back on SEED (3): down = SPEED, then L/R
 
 emu.addEventCallback(function()
   local p={}

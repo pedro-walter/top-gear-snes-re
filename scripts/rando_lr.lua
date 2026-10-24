@@ -3,7 +3,7 @@ local ROOT=os.getenv("TG_ROOT") local wr=emu.memType.snesWorkRam
 local sched={} local function press(f,b,n) for i=0,(n or 5) do sched[f+i]=b end end
 local f=1300
 press(f,"start") f=f+120 press(f,"start") f=f+180
-press(f,"down") f=f+30 press(f,"down") f=f+30
+press(f,"down") f=f+30 press(f,"down") f=f+30 press(f,"down") f=f+30   -- SEED row = 3
 local N=tonumber(os.getenv("N") or 30)
 for i=1,N do press(f,(i%2==0) and "left" or "right",(i%5)*4+2) f=f+40 end
 LAST=f

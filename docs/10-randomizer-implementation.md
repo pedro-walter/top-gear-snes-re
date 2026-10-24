@@ -24,7 +24,7 @@ automatically, `$0012` = absolute, `$12` = direct page, `$123456` = long, `.l/.w
 * **Hooks into the game** (`src/hooks.asm`): `00:BF59` (stream expansion -> generator, sets `$1F06`, `$0200`),
   `00:BF38` (laps), `00:C162` (pit word / side), `0F:9281` (PLAY GAME: derive environment from the seed, clear the
   points table so the results/ranking show only this race), `0F:8487` (results -> back to the main menu, title skipped once),
-  menu entry 2 `COUNTRY` -> `SEED`.
+  menu entry `COUNTRY` -> `SEED` (the whole menu was reworked later, see "Main menu and track series" below).
 * **Seed UI**: main menu shows `SEED xxxxxxxx`; Left/Right on that row rolls a new seed; A opens the keypad
   (`src/keypad.asm`, page 8 of the menus reused): **big gold glyphs**, a 6x3 grid, typed code in the
   box in the big font, selection bar = the game's own sprite pill, cursor wraps inside the 18 cells (no blank cell can be
@@ -145,3 +145,51 @@ the env's two most common tree/bush types in the original data, minus the env's 
   one track in 16 gets one single-lane barrier closure (type 7 yellow barriers where the environment has them) on the first 112-slot straight after slot 300:
   right side tapers in, holds, tapers out while the left side tapers in, holds, tapers out (like Las Vegas on championship). Nothing within 96 slots of the gantry or at the pit pieces; signs/pit/group objects are never overwritten.
   Gantry visible in all 32 environments (checked with a script of the same kind as `tools/gantry_search.py`).
+
+## Main menu and track series (2026-10-24)
+`src/menu.asm` replaces the original `main_menu` (`0F:918B` is a `JML mm_run`; the patches of the old five-row menu - COUNTRY label, bar lengths,
+`hook_lr`, `hook_menu_draw` - are gone). Six rows, **3 tile rows apart** (rows 6, 9 .. 21 inside the frame of page 0, so nothing has to scroll and the
+planned up/down "more options" arrows were not needed; if a row is added later the pitch can go down to 3 with 7 rows before the frame is full):
+
+| row | label | Left/Right | A / Start |
+|---|---|---|---|
+| 0 | `1 PLAYER` / `2 PLAYERS` | toggle | player setup (original `0F:929B`) |
+| 1 | `DIFFICULTY` (the original skill menu, its title is renamed too) | - | skill menu `0F:9652` |
+| 2 | `<n> TRACKS` | `<infinity> 1 2 .. 99` ring: Left from `1 TRACK` = infinite, Right from 99 = infinite | - |
+| 3 | `SEED xxxxxxxx` | roll a new seed | hex keypad |
+| 4 | `SPEED KPH` / `MPH` | toggle | toggle |
+| 5 | `PLAY GAME` | - | start |
+
+* Labels are the game's big font drawn by `draw_string_to_buffer` into the text buffer (`mm_text`, strings in bank `$10`); the number of tracks is built as a string
+  (`1 TRACK`, `7 TRACKS`, `12 TRACKS`); the **infinity sign** is an own 16x16 glyph (`tools/bigfont.py`, `inf_gfx`, 4 tiles in VRAM tiles `$60 $61 / $70 $71`,
+  uploaded in forced blank next to the seed digit tiles) written straight into the tile map. Page 0's label list was redirected (`0D:C738`, table b) to a list that only
+  has the title `OPTIONS` (in the free tail of bank `$0F`, `0F:FF17`).
+* **SEED is only active with `1 TRACK`.** Otherwise the label, the 8 digits and the selector are grey: tile words get palette 5 (`$1400`; BG palette 1 is the photo!),
+  the grey text palette is written into the palette shadow `$050C`, the selector (sprite palette 7, shadow `$064C`) is swapped between the original and a grey one
+  (`mm_selpal`); the NMI uploads the shadow when `$90 = $004C` (that frame it does nothing else, hence `mm_push_pal` waits one frame). The cursor can stop on the grey row,
+  A and Left/Right do nothing there.
+* The cursor returns to the row of the submenu you came from (`MCUR`); after `PLAY GAME` it starts at the top again.
+* State (bank `$7F`, `MAGIC2 $5AA5` guards it, initialised by `menu_init` - separate from the seed magic because the test scripts poke the seed magic): `TRKS $FA00`
+  (0 = infinite, 1 = one race = default), `DONE $FA02`, `PODIUM $FA04`, `MCUR $FA06`, `CUR $FA08`, `SELG $FA0A`, scores `TOTLO $FA20..` / `TOTHI $FA40..` (20 cars).
+
+### Series (TRKS != 1)
+* `PLAY GAME` (`hook_play`): scores cleared, **a fresh random seed** for every race (SEED is inactive), `DONE = 0`.
+* After the ranking screen (`hook_afterresults`, `0F:8487`): `DONE++`; infinite or `DONE < TRKS` -> `roll_seed`, `rando_env`, the scroll/font state of the original
+  "passed race" path, `JMP 0F:818E` = splash screen of the next track and the race (the original goes the same way after a passed race; the grid of the next race follows
+  the places `$1F00/$1F02`, as in the championship). `TRKS == 1` -> back to the main menu as before (title skipped once).
+* **Scores keep adding up, as 16 bit values** (the original has one byte per car, which wraps after 12 wins and shows two digits): `0F:8889` (the add in the results
+  table) -> `hook_addpts`, the bubble sort of the world ranking (`0F:896F`) -> `hook_cmp`, `draw_points_column` (`0F:8B4E`) -> `hook_ptscol` (up to 3 digits, right aligned at
+  column 21, capped at 999 on screen, 65535 in memory). Cars 0 and 1 are the two humans (or player 1 and the COMPUTER car in 1P), 2..19 the bots; `$1F4E` is no longer used.
+* **No game over.** The qualification tests (top 5 per race, top 3 per country), the point wipe and the title/KEMCO return of the original are not reachable any more
+  (docs/13 lists them); nothing in the randomizer ever ends a session because of a bad place.
+* **Podium** (after the last race of a finite series, `podium_start`): the scene screen of docs/13 section 5 is reused - checkered `TG` wall, one driver per human
+  (celebrating if a human is in the top 3 of the standings, else the sad one) and a `PLAYER n <place>` label from `build_finish_order` (place = standing in the
+  series, `$1F62`); 2P shows both players, 1P only the human (the COMPUTER car has no scene). The message is ours (`CONGRATULATIONS / YOU MADE THE PODIUM / SERIES COMPLETE`
+  or `SORRY / YOU MISSED THE PODIUM / SERIES COMPLETE`, `msg_win` / `msg_lose`), hooked at `0F:8584` / `0F:8592`; the password block (`0F:85F2`) is skipped; BG1 scroll has to be
+  set to `$0010` first (the ranking scrolls the layer away: black screen without it). After a key press `hook_podend` (`0F:8669`) goes to the main menu (title skipped once).
+* Infinite series never reaches the podium; the world ranking after every race is the scoreboard.
+
+Tests: `scripts/rando_series.lua` (env `TRACKS` = 0 infinite / n, `TWO=1`, `PLACES="0,3,.."`, `SHOTS`): sets the menu through the keys, forces the end of every race like
+`race_end_force.lua` and prints `results_flow / har_next / podium_start / hook_podend / mm_run` with frame numbers (verified: 1 track -> menu, 2 and 8 tracks -> podium, 0 -> 9
+races without podium, 2P podium with both drivers, 3-digit scores in the ranking). Scripts that navigate the menu were updated (SEED is row 3, PLAY GAME row 5;
+`common.lua` adds the extra Down when `TG_ROM` contains `rando`).

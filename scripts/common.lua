@@ -1,6 +1,9 @@
 -- shared helpers: menu navigation to a 1-player race, frame counter, input
 R = { f=0, hold={} }
 local ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1700,"a"} }
+if (os.getenv("TG_ROM") or ""):find("rando") then   -- the randomizer menu has six rows: PLAY GAME is the 6th
+  ev={ {1300,"start"},{1420,"start"}, {1600,"down"},{1620,"down"},{1640,"down"},{1660,"down"},{1680,"down"},{1700,"a"} }
+end
 R.steer=nil   -- function(f) -> table of buttons during race
 function R.run(maxf, onframe, finish)
   emu.addEventCallback(function()

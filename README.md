@@ -10,9 +10,10 @@ runtime inspection in the Mesen2 emulator.
 
 ## Randomizer (work in progress)
 `python3 -I tools/build_rando.py` turns your ROM into `out/rando.sfc` (1 MB): every race is a **random track generated on the
-console from an 8-hex-digit seed** (3-8 laps, always a pit stop, one of the 32 original environments). The main menu shows
-`SEED xxxxxxxx` (A = hex keypad, Left/Right = new random seed); the results screen returns to the menu and the seed is kept
-for a replay. `python3 -I tools/make_ips.py` writes an IPS patch (our bytes only). Details and tests: docs/09, docs/10.
+console from an 8-hex-digit seed** (3-8 laps, always a pit stop, one of the 32 original environments). The main menu has `1 PLAYER`, `DIFFICULTY`, `<n> TRACKS`
+(Left/Right: 1..99 or infinite), `SEED xxxxxxxx` (A = hex keypad, Left/Right = new random seed; only with `1 TRACK`), `SPEED KPH/MPH` and `PLAY GAME`.
+One track: the results screen returns to the menu and the seed is kept for a replay. More tracks (or infinite): a new random track after every race,
+championship points of all racers add up, and a podium scene closes a finite series. `python3 -I tools/make_ips.py` writes an IPS patch (our bytes only). Details and tests: docs/09, docs/10.
 
 ## Tracks (32 = 8 countries × 4)
 USA: 0 Las Vegas, 1 Los Angeles, 2 New York, 3 San Francisco · South America: 4 Rio, 5 Machu Picchu,

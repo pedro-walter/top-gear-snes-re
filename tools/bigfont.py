@@ -55,8 +55,26 @@ def mask(ch):
 
 GRAD = [0xF, 0xE, 0xE, 0xD, 0xD, 0xC, 0xC, 0xB, 0xB, 0xA, 0xA, 0x9, 0x9, 0x8, 0x8, 0x8]
 
+INF_ROWS = ['..XXXX....XXXX..',
+            '.XXXXXX..XXXXXX.',
+            '.XX..XXXXXX..XX.',
+            'XX....XXXX....XX',
+            'XX.....XX.....XX',
+            'XX....XXXX....XX',
+            '.XX..XXXXXX..XX.',
+            '.XXXXXX..XXXXXX.',
+            '..XXXX....XXXX..']
+
+def inf_mask():
+    m = [[0] * W for _ in range(H)]
+    for j, row in enumerate(INF_ROWS):
+        for x, c in enumerate(row): m[3 + j][x] = 1 if c == 'X' else 0
+    return m
+
 def pixels(ch):
-    m = mask(ch)
+    return pixels_of(inf_mask() if ch == 'inf' else mask(ch))
+
+def pixels_of(m):
     px = [[0] * W for _ in range(H)]
     def at(x, y): return m[y][x] if 0 <= x < W and 0 <= y < H else 0
     for y in range(H):
@@ -94,6 +112,11 @@ def gfx():
                 tiles[base + ty * 16 + tx] = tile_bytes(px, tx, ty)
     return b''.join(tiles)
 
+def inf_gfx():
+    """128 bytes: the infinity sign (menu 'TRACKS' row) as 4 tiles in the order top-left, top-right, bottom-left, bottom-right."""
+    px = pixels('inf')
+    return b''.join(tile_bytes(px, tx, ty) for ty in range(2) for tx in range(2))
+
 def tile(slot): return 128 + (slot >> 3) * 32 + (slot & 7) * 2     # the game's own glyph slots (A=1..Z=26, arrows 30/31)
 def new_tile(v): return 256 + (v >> 3) * 32 + (v & 7) * 2
 KEYS = [new_tile(v) for v in range(16)] + [tile(30)]            # hex value 0..15, then the left arrow (delete)
@@ -103,6 +126,10 @@ COL0, ROW0, PITCH_X, PITCH_Y = 6, 11, 3, 4    # key grid: 6 columns x 3 rows of 
 def asm():
     out = ['kp_gfx:                         ; 2048 bytes: VRAM tiles 256..319 (see tools/bigfont.py)']
     g = gfx()
+    for i in range(0, len(g), 32):
+        out.append('    .db ' + ','.join('$%02X' % b for b in g[i:i + 32]))
+    out.append('inf_gfx:                        ; 128 bytes: infinity sign, tiles TL TR BL BR (main menu TRACKS row)')
+    g = inf_gfx()
     for i in range(0, len(g), 32):
         out.append('    .db ' + ','.join('$%02X' % b for b in g[i:i + 32]))
     out.append('kp_keys:                        ; glyph tile of every key (hex value 0..15, 16 = delete arrow)')
@@ -122,8 +149,8 @@ def preview(path, scale=4):
     for i in range(8, 16):
         t = (i - 8) / 7
         pal[i] = (int(120 + 135 * t), int(80 + 150 * t), int(10 + 60 * t))
-    im = Image.new('RGB', (16 * 16 * scale, 16 * scale))
-    for j, ch in enumerate(ORDER):
+    im = Image.new('RGB', (17 * 16 * scale, 16 * scale))
+    for j, ch in enumerate(list(ORDER) + ['inf']):
         px = pixels(ch)
         for y in range(16):
             for x in range(16):
