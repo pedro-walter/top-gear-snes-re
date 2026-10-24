@@ -1051,3 +1051,87 @@ ps_roll:
     nop
 .org $0FA733                    ; title of the difficulty page (was "SKILL LEVEL", same length): the main menu row is called DIFFICULTY
     .db $05,$04,"DIFFICULTY ",0
+
+; ---- 05:E55C / E577 / E73B / E756  car-to-car collision: the car is pushed back to "other car's position - 8" ----
+; The other car's position can already belong to the next lap (it crossed the line, the human has not yet) or to the
+; previous one.  The plain subtraction then gave a position just before the start (>= $FC00 = "previous lap"): the
+; lap check took a lap off and the next crossing only gave it back -> the lap did not count.  The other way round
+; (human already across, other car not) the lap was counted twice.  Fix: compute the new position in the human's own lap.
+.org $05E55C                    ; human 1 hits the computer car (player 2)
+    jsl hook_hit1               ; was: SEC / SBC #$0008 / STA $1ED7 (7 bytes; A = other position)
+    nop
+    nop
+    nop
+.org $05E577                    ; human 1 hits a bot ($1B = bot position)
+    jsl hook_hit1
+    nop
+    nop
+    nop
+.org $05E73B                    ; player 2 / computer car hits human 1
+    jsl hook_hit2               ; was: SEC / SBC #$0008 / STA $1EDA
+    nop
+    nop
+    nop
+.org $05E756                    ; player 2 / computer car hits a bot
+    jsl hook_hit2
+    nop
+    nop
+    nop
+
+.org $138000
+.a16
+.i16
+hook_hit1:                      ; A = position of the other car, X = its car-list slot (M = X = 16 bit)
+    ldy $0204
+    jsr hit_pos
+    sta $1ED7
+    rtl
+hook_hit2:
+    ldy $0206
+    jsr hit_pos
+    sta $1EDA
+    rtl
+hit_pos:                        ; Y = slot of the car that was hit -> A = other position - 8, in that car's own lap
+    sec
+    sbc #$0008
+    pha
+    lda $0219,y
+    cmp #$FC00
+    bcs hitp_orig                 ; still behind the line of lap 1 (positions count backwards from the length)
+    sep #$20
+    lda $021B,x                 ; lap byte of the other car minus ours
+    sec
+    sbc $021B,y
+    rep #$20
+    and #$00FF
+    beq hitp_same
+    cmp #$0001
+    beq hitp_up
+    cmp #$00FF
+    bne hitp_orig
+    pla                         ; the other car is one lap behind: its position is that much lower
+    sec
+    sbc $0200
+    bra hitp_clamp
+hitp_up:                          ; the other car crossed the line already
+    pla
+    clc
+    adc $0200
+    bra hitp_clamp
+hitp_same:
+    pla
+hitp_clamp:
+    cmp #$FC00                  ; below the start line of our lap: stop on the line
+    bcs hitp_zero
+    cmp $0200
+    bcc hitp_ret
+    lda $0200
+    dec a
+    rts
+hitp_zero:
+    lda #$0000
+hitp_ret:
+    rts
+hitp_orig:
+    pla
+    rts
