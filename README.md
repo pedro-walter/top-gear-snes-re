@@ -8,7 +8,7 @@ runtime inspection in the Mesen2 emulator.
 **This repository contains no game data.** You need your own legally obtained ROM
 (`Top Gear (USA).sfc`, 512 KB, LoROM, no header). Put it in the repo root, or point `TOPGEAR_ROM` at it.
 
-## Randomizer (BETA 0.2, patch in `release/`)
+## Randomizer (BETA 0.3, patch in `release/`)
 `python3 -I tools/build_rando.py` turns your ROM into `out/rando.sfc` (1 MB): every race is a **random track generated on the
 console from an 8-hex-digit seed** (3-8 laps, always a pit stop, one of the 32 original environments). The main menu has `1 PLAYER`, `DIFFICULTY`, `<n> TRACKS`
 (Left/Right: 1..99 or infinite), `SEED xxxxxxxx` (A = hex keypad, Left/Right = new random seed; only with `1 TRACK`), `SPEED KPH/MPH` and `PLAY GAME`.

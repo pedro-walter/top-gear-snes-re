@@ -1,4 +1,4 @@
-TOP GEAR RANDOMIZER  -  BETA 0.2
+TOP GEAR RANDOMIZER  -  BETA 0.3
 Randomizer by Pedro Walter, powered by Claude.   Source and docs: this repository (MIT).
 
 WHAT YOU NEED
@@ -8,9 +8,9 @@ WHAT YOU NEED
     The patch contains only our changes, no game data.
 
 HOW TO PATCH
-  Apply  top-gear-randomizer-0.2.ips  to your ROM. The result is a 1 MB ROM (the patcher extends the file);
+  Apply  top-gear-randomizer-0.3.ips  to your ROM. The result is a 1 MB ROM (the patcher extends the file);
   run it in any SNES emulator or on hardware that accepts a 1 MB LoROM image.
-  Command line, as an example (Floating IPS):  flips --apply top-gear-randomizer-0.2.ips "Top Gear (USA).sfc" randomizer.sfc
+  Command line, as an example (Floating IPS):  flips --apply top-gear-randomizer-0.3.ips "Top Gear (USA).sfc" randomizer.sfc
 
 WHAT IT DOES
   Every race is a new random track built on the console from an 8-digit hex seed (3-8 laps, always a pit stop,
@@ -23,6 +23,11 @@ WHAT IT DOES
     2-99       a new random track after every race, championship points of all racers add up (world ranking up to
                5 digits); after the last race a podium scene says THANK YOU FOR PLAYING! and the game returns to the title screen.
     infinity   endless series, never a podium. No qualification / game over in series.
+
+NEW IN 0.3
+  * No pit lane on short races (the car can finish on one tank); lap strip shows the pit marker at the pit's position.
+  * Single race: results screen only, no world ranking.
+  * Fixes: lap lost when hitting a car that already crossed the finish line; fade-out with a refuelled car still racing.
 
 CREDITS
   Original game: Top Gear, Kemco / Gremlin Graphics. This patch is an unofficial fan project and is not affiliated with them.
