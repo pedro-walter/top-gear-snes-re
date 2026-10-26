@@ -86,7 +86,10 @@ If there is a concrete claim (which car, which track, how many laps per tank) it
 
 ### Text, graphics, palette (Europe)
 * Spelling: `TIRE GRIP` -> **`TYRE GRIP`** (car select strings, 0F:A8A3 `49 -> 59`). The USA font had no `Y` glyph in that font, so the glyph was added: the 4bpp tiles in bank 02 (02:DD4C..DE38, E1ED..E2B8, E309.., EC4D..ED6E) and the recompressed font stream in bank 09 (09:D642..E573) differ.
-* One 16-byte palette in bank 0E (0E:FBD6) differs; not yet identified on which screen.
+* One 16-byte palette in bank 0E (0E:FBD6..FBE5) differs. It is colours 8..15 of BG palette 2 in the grey menu-photo palette set (CGRAM `$50..$5F`; colours 0..7 are the grey ramp
+  `7FFF 7F7B 6EF7 5E73 3D6B 2CE7 1C63`). USA has `7210 71CE` x4 there, Europe eight different colours. The set is read by the fade routine at 0F:A245 on the Kemco logo (frame ~806),
+  the options menu (~1546), the location screen (~1774) and the results screen (~8545). Painting the 8 colours magenta in a USA copy showed **no magenta pixel on any of those screens**
+  (the tiles only use the grey ramp), and the same patch only changed the fade timing, so these entries are unused filler that differs because the build data differs, not a visible change.
 * Everything else (title, menus, countries, passwords, balloons, results) is identical to USA. Title screens compare equal frame by frame.
 
 ## Japan (Top Racer)
