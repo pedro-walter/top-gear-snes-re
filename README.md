@@ -36,6 +36,8 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 11. [Speech balloons and messages](docs/11-speech-balloons-messages.md)
 12. [Ideal gear shifts](docs/12-ideal-gear-shifts.md)
 13. [Race results, championship points, qualification / game over, podium scene](docs/13-race-results-qualification-podium.md)
+14. [What differs between the four cars](docs/14-car-differences.md)
+15. [USA vs Europe vs Japan: the three releases](docs/15-rom-versions.md)
 
 ## Tools (`tools/`, Python 3, run from the repo root with `python3 -I`)
 | tool | purpose |
