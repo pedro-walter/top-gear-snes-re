@@ -30,6 +30,16 @@ So the old "3rd gear + nitro" trick (docs/02) is right, and the exact crossover 
 
 Per tick the burn is `((RPM * burn_byte) >> 14) + 1`, with RPM = `((speed * ratio) >> 8) << 1`, ratio 127/96/58/42/30 for 1st..5th (the same for all cars, nitro rows too) and burn_byte 100/64/90/82 (red/white/purple/blue). Fuel per km is therefore almost proportional to the gear ratio: 5th burns about 30 % less than 4th at the same speed. A full tank is 43007 units. As the tank empties the top speed rises by up to 670 units (+16 km/h).
 
+In plain math (divisions round down to a whole number, as the shifts do; `mod 1024` is the `& 0x3FF` mask, the remainder after dividing by 1024):
+
+```
+RPM  = (speed * ratio / 256) * 2
+burn = (RPM * burn_byte / 16384) mod 1024 + 1
+fuel = fuel - burn
+```
+
+The `mod 1024` never matters in practice (red, 1st gear, 5000 units: burn is about 30), it is only a safety limit in the code. Ignoring it and the intermediate rounding, the whole thing reduces to `burn ~ speed * ratio * burn_byte / 2,097,152 + 1` (2,097,152 = 128 * 16384). Example, red car (burn_byte 100), 5th gear (ratio 30), speed 9000: RPM = (9000 * 30 / 256) * 2 = 2108, burn = 2108 * 100 / 16384 + 1 = 13 units per tick, out of a 43007 tank.
+
 Flat road, throttle held, full tank, one 2.4 km lap from a standing start (model only, not measured in the game; km assume 40 ticks/s):
 
 | | time | fuel |
