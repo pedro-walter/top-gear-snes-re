@@ -1112,9 +1112,18 @@ hit_pos:                        ; Y = slot of the car that was hit -> A = other 
     pla                         ; the other car is one lap behind: its position is that much lower
     sec
     sbc $0200
-    bra hitp_clamp
+    cmp #$FBF8                  ; only when it is right before the line (else a lapped car at the same spot: keep the plain position)
+    bcs hitp_clamp
+    clc
+    adc $0200
+    rts
 hitp_up:                          ; the other car crossed the line already
     pla
+    cmp #$0400                  ; only when it is right after the line (else it lapped us at the same spot: keep the plain position)
+    bcc hitp_add
+    cmp #$FC00
+    bcc hitp_ret
+hitp_add:
     clc
     adc $0200
     bra hitp_clamp
