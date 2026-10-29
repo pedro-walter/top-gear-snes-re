@@ -1109,17 +1109,25 @@ hit_pos:                        ; Y = slot of the car that was hit -> A = other 
     beq hitp_up
     cmp #$00FF
     bne hitp_orig
-    pla                         ; the other car is one lap behind: its position is that much lower
+    lda $0219,y                 ; the other car is one lap behind: only if we are just across the line and it is not
+    cmp #$0400                  ; (both before the line = a backmarker at the same spot: keep the plain position)
+    bcs hitp_orig
+    pla
     sec
     sbc $0200
-    cmp #$FBF8                  ; only when it is right before the line (else a lapped car at the same spot: keep the plain position)
+    cmp #$FBF8                  ; and it must be right before the line
     bcs hitp_clamp
     clc
     adc $0200
     rts
-hitp_up:                          ; the other car crossed the line already
+hitp_up:                          ; the other car crossed the line already, we are about to (else it lapped us: plain position)
+    lda $0200                   ; (our position may already be past the length: the wrap comes later, at 05:E789)
+    sec
+    sbc #$0400
+    cmp $0219,y
+    bcs hitp_same               ; not within the last $0400: plain position, but never behind the line
     pla
-    cmp #$0400                  ; only when it is right after the line (else it lapped us at the same spot: keep the plain position)
+    cmp #$0400                  ; and it must be right after the line
     bcc hitp_add
     cmp #$FC00
     bcc hitp_ret

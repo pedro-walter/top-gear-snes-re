@@ -14,7 +14,7 @@ def fix_header(rom):
     c = s ^ 0xFFFF
     rom[0x7FDC] = c & 0xFF; rom[0x7FDD] = c >> 8
 
-VERSION = 'BETA 0.4'          # shown on the title screen
+VERSION = 'BETA 0.5'          # shown on the title screen
 
 def title_lines():
     """(.db lines of the title text list, number of glyph sprites).  Lines are centred on pixel 135 like the original ones;
