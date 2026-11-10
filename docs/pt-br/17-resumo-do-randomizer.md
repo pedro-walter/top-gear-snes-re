@@ -26,7 +26,7 @@ Visão geral das features e correções de bugs. Os detalhes técnicos estão em
 **Séries de pistas**
 - Com 1 pista, a tela de resultados volta ao menu e a seed é mantida para repetir a pista. Não há ranking mundial.
 - Com 2 a 99 pistas, ou infinito, cada corrida tem uma pista nova e os pontos de todos os pilotos se acumulam.
-- O placar passou a ter 16 bits (até 5 dígitos). No original era 1 byte por carro, que estourava depois de 12 vitórias.
+- O placar tem 16 bits (até 5 dígitos). O original guardava 1 byte por carro, o que bastava para o campeonato curto dele; uma série de até 99 pistas precisa de mais de 255 pontos, então o randomizer ampliou o campo.
 - Séries finitas terminam num pódio com a mensagem "THANK YOU FOR PLAYING!", com a música de "completed Top Gear", e voltam à tela de título.
 - Não há game over nem qualificação.
 
@@ -51,12 +51,14 @@ Visão geral das features e correções de bugs. Os detalhes técnicos estão em
 - **Letra cortada** no contador de voltas (o T de "LAPS LEFT").
 
 **Bugs do jogo original**
-- **Volta perdida ao colidir perto da linha de chegada** (0.3). Se o outro carro já tinha cruzado a linha, a colisão empurrava o humano para trás dela. Esse caso foi corrigido.
-- **Colisão com um carro que já deu uma volta de vantagem** (0.4). O jogador era teleportado para o outro lado da linha e ganhava uma volta indevida. Isso foi corrigido, e a correção só atua perto da linha.
-- **Retardatário perto da linha** (0.5). Com P2 no modo single player, o carro perdia todo o progresso da volta. A posição agora fica sempre dentro da própria volta, e há um script de teste unitário (`hitpos_unit.lua`).
+- **Volta perdida ao colidir perto da linha de chegada** (corrigido na 0.3). Se o outro carro já tinha cruzado a linha, a colisão empurrava o humano para trás dela e uma volta era descontada. Esse é o único bug de colisão que existe no jogo original.
 - **Fade-out errado** quando um carro reabastecido ainda corria depois que o outro terminou (0.3). Isso foi corrigido.
 - **Carro dentro da sequência do pit** passou a contar como "em corrida" no fim da prova.
-- **Pontuação** de um byte por carro que estourava (veja Séries de pistas).
+
+**Regressões da nossa própria correção (nunca existiram no jogo original)**
+A primeira versão da correção da linha de chegada (0.3) introduziu dois bugs novos, achados por jogadores e corrigidos em versões seguintes:
+- **Colisão com um carro que já deu uma volta de vantagem** (achado na 0.3, corrigido na 0.4). O jogador era teleportado para o outro lado da linha e ganhava uma volta indevida. O ajuste agora só atua perto da linha.
+- **Retardatário perto da linha** (achado na 0.4, corrigido na 0.5). Com P2 no modo single player, o carro perdia todo o progresso da volta. A posição agora fica sempre dentro da própria volta, e há um script de teste unitário (`hitpos_unit.lua`).
 
 ## Pesquisa e documentação (sem mudar o jogo)
 O repositório também documenta várias coisas que o randomizer não altera: as trocas de marcha ideais ([12](12-trocas-de-marcha-ideais.md)), as diferenças entre os quatro carros ([14](14-diferencas-entre-carros.md)), a comparação entre as ROMs USA, Europa e Japão ([15](15-versoes-da-rom.md)), as mensagens e balões de fala ([11](11-baloes-de-fala-mensagens.md)) e experimentos de economia de combustível ([16](16-economia-de-combustivel.md)).

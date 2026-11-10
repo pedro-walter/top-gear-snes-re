@@ -26,7 +26,7 @@ Overview of the features and bug fixes. Technical details are in [09](09-randomi
 **Track series**
 - With 1 track, the results screen returns to the menu and the seed is kept so you can replay the track. No world ranking.
 - With 2 to 99 tracks, or infinite, every race has a new track and the championship points of all racers add up.
-- Scores are now 16 bit (up to 5 digits). The original used one byte per car, which wrapped after 12 wins.
+- Scores are 16 bit (up to 5 digits). The original kept one byte per car, which was enough for its short championship; a series of up to 99 tracks needs more than 255 points, so the randomizer widened it.
 - Finite series end with a podium scene saying "THANK YOU FOR PLAYING!", with the "completed Top Gear" tune, and return to the title screen.
 - No game over and no qualification.
 
@@ -51,12 +51,14 @@ Overview of the features and bug fixes. Technical details are in [09](09-randomi
 - **Cut-off letter** in the lap counter (the T of "LAPS LEFT").
 
 **Bugs of the original game**
-- **Lap lost when colliding near the finish line** (0.3). If the other car had already crossed the line, the collision pushed the human behind it. This case was fixed.
-- **Collision with a car that had lapped you** (0.4). The player was teleported across the line and got a lap by mistake. Fixed, and the fix only acts near the line.
-- **Backmarker near the line** (0.5). With P2 in single player the car lost all its progress of the lap. The position now always stays inside the car's own lap, and there is a unit test script (`hitpos_unit.lua`).
+- **Lap lost when colliding near the finish line** (fixed in 0.3). If the other car had already crossed the line, the collision pushed the human behind it and a lap was taken off. This is the only collision bug that exists in the original game.
 - **Wrong fade-out** when a refuelled car was still racing after the other car finished (0.3). Fixed.
 - **A car inside the pit sequence** now counts as running at the end of the race.
-- **Score** of one byte per car that wrapped (see Track series).
+
+**Regressions of our own fix (never in the original game)**
+The first version of the finish-line fix (0.3) introduced two new bugs, found by players and fixed in later versions:
+- **Collision with a car that had lapped you** (found in 0.3, fixed in 0.4). The player was teleported across the line and got a lap by mistake. The adjustment now only acts near the line.
+- **Backmarker near the line** (found in 0.4, fixed in 0.5). With P2 in single player the car lost all its progress of the lap. The position now always stays inside the car's own lap, and there is a unit test script (`hitpos_unit.lua`).
 
 ## Research and documentation (no game change)
 The repository also documents things the randomizer does not change: ideal gear shifts ([12](12-ideal-gear-shifts.md)), what differs between the four cars ([14](14-car-differences.md)), the comparison of the USA, Europe and Japan ROMs ([15](15-rom-versions.md)), race messages and speech balloons ([11](11-speech-balloons-messages.md)), and fuel-saving experiments ([16](16-fuel-saving.md)).

@@ -179,7 +179,7 @@ planned up/down "more options" arrows were not needed; if a row is added later t
 * After the ranking screen (`hook_afterresults`, `0F:8487`): `DONE++`; infinite or `DONE < TRKS` -> `roll_seed`, `rando_env`, the scroll/font state of the original
   "passed race" path, `JMP 0F:818E` = splash screen of the next track and the race (the original goes the same way after a passed race; the grid of the next race follows
   the places `$1F00/$1F02`, as in the championship). `TRKS == 1` -> back to the main menu as before (title skipped once).
-* **Scores keep adding up, as 16 bit values** (the original has one byte per car, which wraps after 12 wins and shows two digits): `0F:8889` (the add in the results
+* **Scores keep adding up, as 16 bit values** (the original has one byte per car, enough for its short championship; a long series would wrap after 12 wins and show two digits, so the randomizer widens it): `0F:8889` (the add in the results
   table) -> `hook_addpts`, the bubble sort of the world ranking (`0F:896F`) -> `hook_cmp`, `draw_points_column` (`0F:8B4E`) -> `hook_ptscol` (up to 5 digits, 0..65535, **left aligned** from
   column 17, blanks behind short numbers; `HIGH=1` in scripts/rando_series.lua forges big scores to check it). Cars 0 and 1 are the two humans (or player 1 and the COMPUTER car in 1P), 2..19 the bots; `$1F4E` is no longer used.
 * **No game over.** The qualification tests (top 5 per race, top 3 per country), the point wipe and the title/KEMCO return of the original are not reachable any more
@@ -206,6 +206,7 @@ The red car goes 4.75 km on a tank in 5th (docs/12, the thirstiest car). A piece
 **Offset:** the marker is drawn 2 pieces (2048 units) after the pit word, i.e. at the entrance rather than the start of the flags (seed 00163BC9: column 17 -> 18).
 
 ## Lap lost on a collision at the finish line (original game bug, fixed in the randomizer)
+*Only the first problem below exists in the original game. The two "regressions" were introduced by our own fix and fixed in 0.4 and 0.5.*
 A car-to-car hit puts the human car at "other car's position - 8" (`05:E55C`, `E577` for human 1; `E73B`, `E756` for player 2 / the computer car). If the other car is already across the line (position 0..7, lap byte +1) and the human is a few units short of it, the result is negative (>= `$FC00`): the lap check at `05:E789` reads it as "still behind the start line" and takes a lap off (`$1E76`, lap byte `+9`), and the real crossing a moment later only gives it back, so the lap never counts (with the last lap: the race does not end). Reproduced on the original ROM and on the randomizer with `scripts/finish_collide.lua` (human at line-3/-6, slower car at 0/3/6 ahead in the list: lap 0 instead of 1; the car behind in the list is fine).
 Fix (`src/hooks.asm`, `hook_hit1/2` + `hit_pos` at `13:8000`): the new position is computed in the human's own lap: lap byte difference +1 adds the track length, -1 subtracts it, and the result is clamped to `0..length-1`. The grid state of lap 1 (position >= `$FC00`) keeps the original behaviour. After the fix the same setups give lap 1 and the race continues normally. The opposite case (human across, other car not) cannot collide: the overlap test compares raw positions.
 
