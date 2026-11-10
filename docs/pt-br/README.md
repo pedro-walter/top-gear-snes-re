@@ -1,6 +1,6 @@
 # Documentação (Português BR)
 
-[English](../en/README.md) · [README do projeto](../../README.pt-br.md)
+[English](../en/README.md) · [Español](../es/README.md) · [README do projeto](../../README.pt-br.md)
 
 1. [Visão geral, ferramentas, boot, vídeo](01-visao-geral.md)
 2. [Física do carro, marchas, nitro, o truque da 3ª marcha](02-fisica-do-carro-nitro.md)

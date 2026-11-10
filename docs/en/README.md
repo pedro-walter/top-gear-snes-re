@@ -1,6 +1,6 @@
 # Documentation (English)
 
-[Português (BR)](../pt-br/README.md) · [Project README](../../README.md)
+[Português (BR)](../pt-br/README.md) · [Español](../es/README.md) · [Project README](../../README.md)
 
 1. [Overview, tooling, boot, video](01-overview.md)
 2. [Car physics, gears, nitro, the 3rd-gear trick](02-car-physics-nitro.md)

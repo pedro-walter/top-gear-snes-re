@@ -1,6 +1,6 @@
 # Top Gear (USA, SNES) – reverse engineering
 
-**English** · [Português (BR)](README.pt-br.md)
+**English** · [Português (BR)](README.pt-br.md) · [Español](README.es.md)
 
 Notes, tools and emulator scripts documenting how the SNES game *Top Gear (USA)* works:
 car physics and nitro, opponent AI, pit stops, rank, the 32 tracks (road/scenery/object streams),
@@ -24,7 +24,7 @@ Germany: 12 Munich, 13 Cologne, 14 Black Forest, 15 Frankfurt · Scandinavia: 16
 17 Copenhagen, 18 Helsinki, 19 Oslo · France: 20 Paris, 21 Nice, 22 Bordeaux, 23 Monaco ·
 Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 30 Loch Ness, 31 Stonehenge
 
-## Documentation (`docs/en/`, also in Portuguese: [`docs/pt-br/`](docs/pt-br/))
+## Documentation (`docs/en/`, also in Portuguese: [`docs/pt-br/`](docs/pt-br/) and Spanish: [`docs/es/`](docs/es/))
 1. [Overview, tooling, boot, video](docs/en/01-overview.md)
 2. [Car physics, gears, nitro, the 3rd-gear trick](docs/en/02-car-physics-nitro.md)
 3. [Race car list, bots/AI, HUD speed, rank](docs/en/03-cars-ai-hud-rank.md)
