@@ -115,7 +115,7 @@ Gameplay physics, fuel burn, nitro length (320 frames, tested) and the 32 tracks
    bank 0F (menus) is the USA code shifted by -8 bytes after 0F:8F2D plus pointer changes.
 
 ### Balloon ids (Japan vs USA)
-![balloons](img/balloons_usa_vs_japan.png)
+![balloons](../img/balloons_usa_vs_japan.png)
 
 | id | USA | Japan | | id | USA | Japan |
 |---|---|---|---|---|---|---|

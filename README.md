@@ -1,5 +1,7 @@
 # Top Gear (USA, SNES) – reverse engineering
 
+**English** · [Português (BR)](README.pt-br.md)
+
 Notes, tools and emulator scripts documenting how the SNES game *Top Gear (USA)* works:
 car physics and nitro, opponent AI, pit stops, rank, the 32 tracks (road/scenery/object streams),
 passwords, minimaps and day/night. Everything was derived from the game's assembly code and
@@ -13,7 +15,7 @@ runtime inspection in the Mesen2 emulator.
 console from an 8-hex-digit seed** (3-8 laps, always a pit stop, one of the 32 original environments). The main menu has `1 PLAYER`, `DIFFICULTY`, `<n> TRACKS`
 (Left/Right: 1..99 or infinite), `SEED xxxxxxxx` (A = hex keypad, Left/Right = new random seed; only with `1 TRACK`), `SPEED KPH/MPH` and `PLAY GAME`.
 One track: the results screen returns to the menu and the seed is kept for a replay. More tracks (or infinite): a new random track after every race,
-championship points of all racers add up, and a podium scene closes a finite series. `python3 -I tools/make_ips.py` writes an IPS patch (our bytes only). Details and tests: docs/09, docs/10.
+championship points of all racers add up, and a podium scene closes a finite series. `python3 -I tools/make_ips.py` writes an IPS patch (our bytes only). Summary of features and fixes: [docs/en/17](docs/en/17-randomizer-summary.md). Details and tests: docs/09, docs/10.
 
 ## Tracks (32 = 8 countries × 4)
 USA: 0 Las Vegas, 1 Los Angeles, 2 New York, 3 San Francisco · South America: 4 Rio, 5 Machu Picchu,
@@ -22,22 +24,24 @@ Germany: 12 Munich, 13 Cologne, 14 Black Forest, 15 Frankfurt · Scandinavia: 16
 17 Copenhagen, 18 Helsinki, 19 Oslo · France: 20 Paris, 21 Nice, 22 Bordeaux, 23 Monaco ·
 Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 30 Loch Ness, 31 Stonehenge
 
-## Documentation (`docs/`)
-1. [Overview, tooling, boot, video](docs/01-overview.md)
-2. [Car physics, gears, nitro, the 3rd-gear trick](docs/02-car-physics-nitro.md)
-3. [Race car list, bots/AI, HUD speed, rank](docs/03-cars-ai-hud-rank.md)
-4. [Pit stops](docs/04-pit-stops.md)
-5. [Track data, scenery and object streams, per-track tables](docs/05-tracks-scenery-objects.md)
-6. [Track names, passwords, minimaps, day/night](docs/06-names-minimap-daynight.md)
-7. [Open items and corrections](docs/07-open-items-and-corrections.md)
-8. [Accelerator + brake cornering trick (P1 only)](docs/08-brake-cornering-trick.md)
-9. [Randomizer plan and decisions](docs/09-randomizer-plan.md)
-10. [Randomizer implementation status, memory map, tests](docs/10-randomizer-implementation.md)
-11. [Speech balloons and messages](docs/11-speech-balloons-messages.md)
-12. [Ideal gear shifts](docs/12-ideal-gear-shifts.md)
-13. [Race results, championship points, qualification / game over, podium scene](docs/13-race-results-qualification-podium.md)
-14. [What differs between the four cars](docs/14-car-differences.md)
-15. [USA vs Europe vs Japan: the three releases](docs/15-rom-versions.md)
+## Documentation (`docs/en/`, also in Portuguese: [`docs/pt-br/`](docs/pt-br/))
+1. [Overview, tooling, boot, video](docs/en/01-overview.md)
+2. [Car physics, gears, nitro, the 3rd-gear trick](docs/en/02-car-physics-nitro.md)
+3. [Race car list, bots/AI, HUD speed, rank](docs/en/03-cars-ai-hud-rank.md)
+4. [Pit stops](docs/en/04-pit-stops.md)
+5. [Track data, scenery and object streams, per-track tables](docs/en/05-tracks-scenery-objects.md)
+6. [Track names, passwords, minimaps, day/night](docs/en/06-names-minimap-daynight.md)
+7. [Open items and corrections](docs/en/07-open-items-and-corrections.md)
+8. [Accelerator + brake cornering trick (P1 only)](docs/en/08-brake-cornering-trick.md)
+9. [Randomizer plan and decisions](docs/en/09-randomizer-plan.md)
+10. [Randomizer implementation status, memory map, tests](docs/en/10-randomizer-implementation.md)
+11. [Speech balloons and messages](docs/en/11-speech-balloons-messages.md)
+12. [Ideal gear shifts](docs/en/12-ideal-gear-shifts.md)
+13. [Race results, championship points, qualification / game over, podium scene](docs/en/13-race-results-qualification-podium.md)
+14. [What differs between the four cars](docs/en/14-car-differences.md)
+15. [USA vs Europe vs Japan: the three releases](docs/en/15-rom-versions.md)
+16. [Saving fuel: what works, what does not](docs/en/16-fuel-saving.md)
+17. [Randomizer summary: features and bug fixes](docs/en/17-randomizer-summary.md)
 
 ## Tools (`tools/`, Python 3, run from the repo root with `python3 -I`)
 | tool | purpose |
