@@ -19,3 +19,4 @@
 15. [USA vs Europe vs Japan: the three releases](15-rom-versions.md)
 16. [Saving fuel: what works, what does not](16-fuel-saving.md)
 17. [Randomizer summary: features and bug fixes](17-randomizer-summary.md)
+18. [The TGC tournament ROM: track list, points, how it works](18-tgc-tournament-rom.md)

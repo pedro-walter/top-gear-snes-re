@@ -19,3 +19,4 @@
 15. [USA vs Europa vs Japão: as três versões](15-versoes-da-rom.md)
 16. [Economizar combustível: o que funciona e o que não funciona](16-economia-de-combustivel.md)
 17. [Resumo do randomizer: features e correções de bugs](17-resumo-do-randomizer.md)
+18. [A ROM de torneio TGC: lista de pistas, pontos, como funciona](18-rom-torneio-tgc.md)

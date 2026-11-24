@@ -43,6 +43,7 @@ Itália: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · Reino Unido: 28 London, 29 
 15. [USA vs Europa vs Japão: as três versões](docs/pt-br/15-versoes-da-rom.md)
 16. [Economizar combustível: o que funciona e o que não funciona](docs/pt-br/16-economia-de-combustivel.md)
 17. [Resumo do randomizer: features e correções de bugs](docs/pt-br/17-resumo-do-randomizer.md)
+18. [A ROM de torneio TGC: lista de pistas, pontos, como funciona](docs/pt-br/18-rom-torneio-tgc.md)
 
 ## Ferramentas (`tools/`, Python 3, rode da raiz do repositório com `python3 -I`)
 | ferramenta | finalidade |

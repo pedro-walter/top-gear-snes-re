@@ -42,6 +42,7 @@ Italy: 24 Pisa, 25 Rome, 26 Sicily, 27 Florence · UK: 28 London, 29 Sheffield, 
 15. [USA vs Europe vs Japan: the three releases](docs/en/15-rom-versions.md)
 16. [Saving fuel: what works, what does not](docs/en/16-fuel-saving.md)
 17. [Randomizer summary: features and bug fixes](docs/en/17-randomizer-summary.md)
+18. [The TGC tournament ROM: track list, points, how it works](docs/en/18-tgc-tournament-rom.md)
 
 ## Tools (`tools/`, Python 3, run from the repo root with `python3 -I`)
 | tool | purpose |
